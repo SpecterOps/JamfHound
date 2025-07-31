@@ -1,0 +1,92 @@
+# Retrieve all nodes and edges, limit to 1000
+MATCH p=(s)-[]->(t)
+RETURN p
+LIMIT 1000
+
+# Filter to view access of a Jamf Account named or starting with 'ENROLL'
+MATCH p=(s:jamfAccount)-[*]->(t)
+WHERE s.name STARTS WITH 'ENROLL'
+RETURN p
+LIMIT 1000
+
+# View all paths originating from Jamf Accounts
+MATCH p=(s:jamfAccount)-[*]->(t)
+RETURN p
+LIMIT 1000
+
+# View immediate edges and impacted principals for Jamf API Clients
+MATCH p=(s:jamfApiClient)- [] ->(t)
+RETURN p
+LIMIT 1000
+
+# Display up to 4 edges in attack paths originating from Jamf API Clients with a matching name or name starting with DEMO targeting the tenant
+MATCH p=(s:jamfApiClient)-[*1..4]->(t:jamfTenant)
+WHERE s.name STARTS WITH 'DEMO'
+RETURN p
+LIMIT 1000
+
+# Get all Computers
+match p=(s:jamfComputer)
+return p
+
+# Get Jamf Groups
+match p=(s:jamfGroup)
+return p
+
+# Get immediate edges impacting Jamf Accounts originating from Jamf Groups, swap jamfGroup for jamfTenant to see impact edges to the tenant from groups
+MATCH p=(s)-[]->(t:jamfAccount)
+WHERE s.primarykind ENDS WITH 'jamfGroup'
+RETURN p
+LIMIT 1000
+
+# Display Jamf Accounts with Attack-Paths impacting other Jamf Accounts
+MATCH p=(s:jamfAccount)-[*]->(t:jamfAccount)
+RETURN p
+LIMIT 1000
+
+# Show nodes with the edge jamfMatchedEdmail
+MATCH p=(s)-[:jamfMatchedEmail]->(t)
+RETURN p
+LIMIT 1000
+
+# Show edges from Jamf Accounts to the Jamf Tenant
+MATCH p=(s:jamfAccount)-[]->(t:jamfTenant)
+RETURN p
+LIMIT 1000
+
+# Targeted Filtering Query, display nodes with edges between 'GROUP_ADMINISTRATORS' and 'UPDATE' or 'GROUP_ADMINISTRATORS' and other nodes that start with 'SOL'
+MATCH p=(s)-[]->(t)
+WHERE s.name STARTS WITH 'GROUP_ADMINISTRATORS' AND t.name STARTS WITH 'UPDATE' OR s.name STARTS WITH 'GROUP_ADMINISTRATORS' AND t.name STARTS WITH 'SOL'
+RETURN p
+LIMIT 1000
+
+# Similar Targeted Filtering, however only show edges/relationships as specified by r that fall within an array
+MATCH p=(s)-[r]->(t)
+WHERE s.name STARTS WITH 'GROUP_ADMINISTRATORS' 
+  AND (t.name STARTS WITH 'UPDATE' OR t.name STARTS WITH 'SOL')
+  AND type(r) IN ['jamfUpdateAccounts', 'jamfCreateAccounts']
+RETURN p
+LIMIT 1000
+
+# An example of chained targeted filtering 
+MATCH p=(s)-[r]->(t)
+WHERE s.name STARTS WITH 'GROUP_ADMINISTRATORS' 
+  AND (t.name STARTS WITH 'UPDATE' OR t.name STARTS WITH 'SOL' OR t.name STARTS WITH 'JVM')
+  AND type(r) IN ['jamfUpdateAccounts', 'jamfCreateAccounts', 'jamfCreatePolicies']
+OR
+s.primarykind STARTS WITH 'jamfAccount'
+AND (s.name IN ['EXAMPLE', 'REG'])
+AND type(r) IN ['jamfAdminTo']
+OR
+t.primarykind STARTS WITH 'jamfComputer'
+AND s.primarykind IN ['jamfAccount']
+AND s.name STARTS WITH 'AZURE'
+OR
+s.primarykind IN ['jamfTenant']
+AND type(r) IN ['jamfContains']
+AND t.primarykind IN ['jamfSite', 'jamfComputer']
+OR
+s.primarykind IN ['jamfSite']
+AND t.primarykind IN ['jamfComputer']
+RETURN p
+LIMIT 1000
