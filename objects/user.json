@@ -1,0 +1,30 @@
+{
+  'user': {
+    'id': 1,
+    'name': 'testuser',
+    'full_name': 'Test User',
+    'email': 'correspondance@lbcain.com',
+    'email_address': 'correspondance@lbcain.com',
+    'phone_number': '5403001840',
+    'position': 'Standard User',
+    'managed_apple_id': '',
+    'enable_custom_photo_url': False,
+    'custom_photo_url': '',
+    'ldap_server': {
+      'id': -1,
+      'name': 'None'
+    },
+    'extension_attributes': [],
+    'sites': [],
+    'links': {
+      'computers': [],
+      'peripherals': [],
+      'mobile_devices': [],
+      'vpp_assignments': [],
+      'total_vpp_code_count': 0
+    },
+    'user_groups': {
+      'size': 0
+    }
+  }
+}

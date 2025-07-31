@@ -1,0 +1,153 @@
+{
+  'policy': {
+    'general': {
+      'id': 1,
+      'name': 'Update Inventory',
+      'enabled': True,
+      'trigger': 'CHECKIN',
+      'trigger_checkin': True,
+      'trigger_enrollment_complete': False,
+      'trigger_login': False,
+      'trigger_network_state_changed': False,
+      'trigger_startup': False,
+      'trigger_other': '',
+      'frequency': 'Once every week',
+      'retry_event': 'none',
+      'retry_attempts': -1,
+      'notify_on_each_failed_retry': False,
+      'location_user_only': False,
+      'target_drive': '/',
+      'offline': False,
+      'category': {
+        'id': -1,
+        'name': 'No category assigned'
+      },
+      'date_time_limitations': {
+        'activation_date': '',
+        'activation_date_epoch': 0,
+        'activation_date_utc': '',
+        'expiration_date': '',
+        'expiration_date_epoch': 0,
+        'expiration_date_utc': '',
+        'no_execute_on': {},
+        'no_execute_start': '',
+        'no_execute_end': ''
+      },
+      'network_limitations': {
+        'minimum_network_connection': 'No Minimum',
+        'any_ip_address': True,
+        'network_segments': []
+      },
+      'override_default_settings': {
+        'target_drive': '/',
+        'distribution_point': 'default',
+        'force_afp_smb': False,
+        'sus': 'default'
+      },
+      'network_requirements': 'Any',
+      'site': {
+        'id': -1,
+        'name': 'NONE'
+      }
+    },
+    'scope': {
+      'all_computers': True,
+      'computers': [],
+      'computer_groups': [],
+      'buildings': [],
+      'departments': [],
+      'limit_to_users': {
+        'user_groups': []
+      },
+      'limitations': {
+        'users': [],
+        'user_groups': [],
+        'network_segments': [],
+        'ibeacons': []
+      },
+      'exclusions': {
+        'computers': [],
+        'computer_groups': [],
+        'buildings': [],
+        'departments': [],
+        'users': [],
+        'user_groups': [],
+        'network_segments': [],
+        'ibeacons': []
+      }
+    },
+    'self_service': {
+      'use_for_self_service': False,
+      'self_service_display_name': '',
+      'install_button_text': 'Install',
+      'reinstall_button_text': 'Reinstall',
+      'self_service_description': '',
+      'force_users_to_view_description': False,
+      'self_service_icon': {},
+      'feature_on_main_page': False,
+      'self_service_categories': []
+    },
+    'package_configuration': {
+      'packages': [],
+      'distribution_point': 'default'
+    },
+    'scripts': [],
+    'printers': [
+      ''
+    ],
+    'dock_items': [],
+    'account_maintenance': {
+      'accounts': [],
+      'directory_bindings': [],
+      'management_account': {
+        'action': 'doNotChange'
+      },
+      'open_firmware_efi_password': {
+        'of_mode': 'none',
+        'of_password_sha256': ''
+      }
+    },
+    'reboot': {
+      'message': 'This computer will restart in 5 minutes. Please save anything you are working on and log out by choosing Log Out from the bottom of the Apple menu.',
+      'startup_disk': 'Current Startup Disk',
+      'specify_startup': '',
+      'no_user_logged_in': 'Do not restart',
+      'user_logged_in': 'Do not restart',
+      'minutes_until_reboot': 5,
+      'start_reboot_timer_immediately': False,
+      'file_vault_2_reboot': False
+    },
+    'maintenance': {
+      'recon': True,
+      'reset_name': False,
+      'install_all_cached_packages': False,
+      'heal': False,
+      'prebindings': False,
+      'permissions': False,
+      'byhost': False,
+      'system_cache': False,
+      'user_cache': False,
+      'verify': False
+    },
+    'files_processes': {
+      'search_by_path': '',
+      'delete_file': False,
+      'locate_file': '',
+      'update_locate_database': False,
+      'spotlight_search': '',
+      'search_for_process': '',
+      'kill_process': False,
+      'run_command': ''
+    },
+    'user_interaction': {
+      'message_start': '',
+      'allow_users_to_defer': False,
+      'allow_deferral_until_utc': '',
+      'allow_deferral_minutes': 0,
+      'message_finish': ''
+    },
+    'disk_encryption': {
+      'action': 'none'
+    }
+  }
+}
