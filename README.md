@@ -61,24 +61,24 @@ Credit to the following team members for their significant contributions in desi
 JAMFhound was originally developed during a SpecterOps 24-hour hackathon that included multiple proofs-of-concept for identifying dangerous permissions within a JAMF tenant as well as initially mapping relationships within a Neo4j database. The capability to gather information such as the current user permissions that will be written out to unique JSON still exists within this project with examples included below, however, that functionality is not intended to be maintained nor expanded upon in the future and may eventually be removed from the project without notice. SpecterOps has sponsored a separate project, [Eve](https://github.com/RobotOperator/Eve), which performs similar functionality and is intended to be a maintained alternative capable of targeted enumeration actions and more.
 
 ##### Users & Accounts - Deprecated
-Retrieve current user sites and permissions: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://lbcainllc.jamfcloud.com' -me`
+Retrieve current user sites and permissions: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://tenant.jamfcloud.com' -me`
     
-Filter current user site permissions by name: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://lbcainllc.jamfcloud.com' -me --site NONE`
+Filter current user site permissions by name: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://tenant.jamfcloud.com' -me --site NONE`
 
-Retrieve current accounts site names: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://lbcainllc.jamfcloud.com' --sites`
+Retrieve current accounts site names: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://tenant.jamfcloud.com' --sites`
 
-Retrieve all account permissions and save to `accounts.json`: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://lbcainllc.jamfcloud.com' --accounts --save`
+Retrieve all account permissions and save to `accounts.json`: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://tenant.jamfcloud.com' --accounts --save`
 
-Retrieve account by ID: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://lbcainllc.jamfcloud.com' --account 1`
+Retrieve account by ID: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://tenant.jamfcloud.com' --account 1`
 
-Retrieve user by ID: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://lbcainllc.jamfcloud.com' --user 1`
+Retrieve user by ID: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://tenant.jamfcloud.com' --user 1`
 
 ##### Computers - Deprecated
-Retrieve computer by ID: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://lbcainllc.jamfcloud.com' --computer 1`
+Retrieve computer by ID: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://tenant.jamfcloud.com' --computer 1`
 
-Retrieve all computers and save to `computers.json`:  `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://lbcainllc.jamfcloud.com' --computers --save`
+Retrieve all computers and save to `computers.json`:  `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://tenant.jamfcloud.com' --computers --save`
 
 ##### Policies - Deprecated
-Retrieve policy by ID: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://lbcainllc.jamfcloud.com' --policy 1`
+Retrieve policy by ID: `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://tenant.jamfcloud.com' --policy 1`
 
-Retrieve all policies and save to `policies.json`:  `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://lbcainllc.jamfcloud.com' --policies --save`
+Retrieve all policies and save to `policies.json`:  `python main.py -u 'jd' -p 'EXAMPLE123' --url 'https://tenant.jamfcloud.com' --policies --save`
