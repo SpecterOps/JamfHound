@@ -46,6 +46,8 @@ Perform a collection of an onsite tenant:
 Upload the JAMFcollection.json file to BloodHound using the file ingestion interface:
 ![images/Ingest.png](images/Ingest.png)
 
+Use the custom cypher queries contained in the JamfHound repository to view and parse data using the Cypher tab of the BloodHound interface. 
+
 Note: Uploads of multiple JAMF tenants that use the same domain name may result in unexpected node collisions. While this is extremely rare, if you have multiple tenants you wish to collect that use the same URL/domain name for access, use either multiple BH instances or delete data between collections. 
 
 ## Contributors
