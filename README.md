@@ -10,7 +10,7 @@ Example Graph Collection
 
 To visualize and use the JSON files created from JamfHound collections, users will need a BloodHound instance available. Setup and use of BloodHound has been documented [here.](https://bloodhound.specterops.io/get-started/introduction) Access to a local administrator account within BloodHound will be needed to create custom icons and upload new data. BloodHound will need to be updated to support OpenGraph custom objects.
 ### Dependencies
-* Python3 - version 3.9 or newer
+* Python3 - version 3.12 or newer
 * Requests Module
   
 ### Installation
