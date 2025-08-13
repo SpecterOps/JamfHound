@@ -13,7 +13,7 @@ class Edge():
         self.kind = nkind
         self.start = {"value": "", "match_by": "id"}
         self.end = {"value": "", "match_by": "id"}
-        self.properties = {"description":""}
+        self.properties = {"description":"", "traversable":False}
 
 # Checks a supplied Azure JSON file for user nodes that match jamfAccount nodes by email or displayname
 def checkAzureUsers(azureJSON, jamfJSON="JAMFcollection.json"):
