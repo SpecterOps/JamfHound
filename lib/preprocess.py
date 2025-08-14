@@ -400,6 +400,7 @@ class Preprocessor():
         self.updateApiIntegrations_Edges()
         self.matchingEmails_Edge()
         self.computerUser_Edge()
+        self.matchingUserNames_Edge()
 
     #Compute AdminTo Edges for Tenant by checking enabled accounts with Full Access and Administrator
     def adminTo_Tenant_Edge(self):
@@ -717,8 +718,18 @@ class Preprocessor():
                          matchEdge = Edge("MatchedEmail")
                          matchEdge.start["value"] = x.id
                          matchEdge.end["value"] = y.id
-                         matchEdge.properties["description"] = "The JAMF principal email attribute matched the JAMF account email indicating it is likely the same account."
+                         matchEdge.properties["description"] = "The Jamf principal email attribute matched the Jamf account email indicating it is likely the same account."
                          matchEdge.properties["traversable"] = True
                          self.edges.append(matchEdge)
-
-   #TODO : Edge for display names/names matching
+    
+    def matchingUserNames_Edge(self):
+        for x in self.computerusers:
+            if len(x.properties.get("displayname")) > 1:
+                for y in self.accounts:
+                    if y.properties.get("name") == x.properties.get("displayname") or y.properties.get("displayname") == x.properties.get("displayname"):
+                        matchEdge = Edge("jamfMatchedName")
+                        matchEdge.start["value"] = x.id
+                        matchEdge.end["value"] = y.id
+                        matchEdge.properties["description"] = "The Jamf principal name or displayname attributes matched the Jamf account name."
+                        matchEdge.properties["traversable"] = True
+                        self.edges.append(matchEdge)
