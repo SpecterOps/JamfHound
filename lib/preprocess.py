@@ -138,7 +138,6 @@ class Preprocessor():
             "properties": r.properties
             }
             self.graph["graph"]["edges"].append(new_edge)
-      #  print(json.dumps(self.graph, indent=2))
 
     # Write Out JSON
     def write_out_collection(self, outfile="JAMFcollection.json"):
@@ -200,6 +199,8 @@ class Preprocessor():
                 except Exception as f:
                     pass #TODO: Log Errors
                 newaccount.properties["Groups"] = -5
+            if newaccount.properties.get("enabled") == "Disabled":
+                newaccount.kind = "DisabledAccount"
             self.accounts.append(newaccount)
             self.nodes.append(newaccount) 
 
@@ -287,7 +288,6 @@ class Preprocessor():
             newuser.properties["computer"] = computer_node.id
             self.nodes.append(newuser)
             self.computerusers.append(newuser)
-#            self.computerUser_Edge(computer_node, newuser)
     
     #Add Computer Nodes
     def process_computer_nodes(self, computers_file):
@@ -380,6 +380,12 @@ class Preprocessor():
             newsite.properties["siteID"] = s['id']
             self.nodes.append(newsite)
 
+    # Method to ensure edges from nodes are set traversable so long as accounts are enabled
+    def check_traversable(self, edge, node):
+        if node.kind != "jamfDisabledAccount" and node.kind != "jamfDisabledApiClient":
+            edge.properties["traversable"] = True
+        return edge
+
     #Generic function to call new edge computes as they are added
     def compute_edges(self):
         self.contains_Tenant_Edges()
@@ -398,33 +404,26 @@ class Preprocessor():
     #Compute AdminTo Edges for Tenant by checking enabled accounts with Full Access and Administrator
     def adminTo_Tenant_Edge(self):
         for y in self.nodes:
-            if y.properties.get("accessLevel") == "Full Access" and y.properties.get("enabled") == "Enabled" and y.properties.get("privilegeSet") == "Administrator":
-                if y.kind == "jamfAccount" and y.properties.get("enabled"):
-                    # Enabled tenant admin account
-                    adminEdge = Edge("AdminTo")
-                    adminEdge.start["value"] = y.id
-                    adminEdge.end["value"] = self.tenantID #"T-1"Hardcoded base tenant value
-                    adminEdge.properties["description"] = "The source has full administrative control over the target and all resources controlled by the target."
-                    self.admins.append(y)
-                    self.edges.append(adminEdge)
-                else:
-                    adminEdge = Edge("AdminTo")
-                    adminEdge.start["value"] = y.id
-                    adminEdge.end["value"] = self.tenantID # "T-1" Hardcoded base tenant value
-                    adminEdge.properties["description"] = "The source has full administrative control over the target and all resources controlled by the target."
-                    self.admins.append(y)
-                    self.edges.append(adminEdge)
+            if y.properties.get("accessLevel") == "Full Access" and y.properties.get("privilegeSet") == "Administrator": # y.properties.get("enabled") == "Enabled" and y.properties.get("privilegeSet") == "Administrator":
+                adminEdge = Edge("AdminTo")
+                adminEdge.start["value"] = y.id
+                adminEdge.end["value"] = self.tenantID
+                adminEdge.properties["description"] = "The source has full administrative control over the target and all resources controlled by the target."
+                adminEdge = self.check_traversable(adminEdge, y)
+                self.admins.append(y)
+                self.edges.append(adminEdge)
     
     #Compute AdminTo Edges for Sites by checking enabled accounts with Site Access and Administrator    
     def adminTo_Site_Edge(self):
         for b in self.nodes:
-            if b.kind == "jamfAccount" or b.kind == "jamfGroup":
-                if b.properties.get("accessLevel") == "Site Access" and b.properties.get("enabled") == "Enabled" and b.properties.get("privilegeSet") == "Administrator":
+            if b.kind == "jamfAccount" or b.kind == "jamfDisabledAccount" or b.kind == "jamfGroup":
+                if b.properties.get("accessLevel") == "Site Access" and b.properties.get("privilegeSet") == "Administrator":
                     adminSiteEdge = Edge("AdminToSite")
                     adminSiteEdge.start["value"] = b.id
                     adminSiteEdge.end["value"] = f"{self.tenantID}-S{b.properties['siteID']}" #TODO: Hardcoded site static value, better to convert to finding site UID in future probably
                     adminSiteEdge.properties["description"] = "The source has administrative control over the site and all resources controlled by the site. This includes creating policies and scripts that impact resources of the site, send or clear MDM commands, remotely administer site devices and computers,  create computer objects for the site."
-                    self.admins.append(b) #TODO: Review this to ensure it is proper to exclude site admins from other edges
+                    adminSiteEdge = self.check_traversable(adminSiteEdge, b)
+                    self.admins.append(b) 
                     self.edges.append(adminSiteEdge) 
 
     #Compute contains Edges for Tenant resources #accounts, #computers, #sites, #groups, etc...
@@ -436,6 +435,7 @@ class Preprocessor():
                     tcontainsEdge.start["value"] = self.tenantID # "T-1" Hardcoded base tenant value
                     tcontainsEdge.end["value"] = s.id
                     tcontainsEdge.properties["description"] = "The source contains the target resource."
+                    tcontainsEdge.properties["traversable"] = True
                     self.edges.append(tcontainsEdge)
 
     #Compute if a site contains an object
@@ -449,6 +449,7 @@ class Preprocessor():
                         vcontainsEdge.start["value"] = r.id
                         vcontainsEdge.end["value"] = v.id
                         vcontainsEdge.properties["description"] = "The source contains the target resource."
+                        vcontainsEdge.properties["traversable"] = True
                         self.edges.append(vcontainsEdge)
                         return False
         return True
@@ -457,7 +458,7 @@ class Preprocessor():
     #Compute Update Account Edge
     def update_account_Edges(self):
         for x in self.nodes:
-            if x.kind == "jamfAccount" or x.kind == "jamfGroup":
+            if x.kind == "jamfAccount" or x.kind == "jamfDisabledAccount" or x.kind == "jamfGroup":
                 if x not in self.admins:
                     if "Update Accounts" in x.properties["privilegesJSSObjects"]:
                         for z in self.accounts:
@@ -465,39 +466,43 @@ class Preprocessor():
                             updateAccountsEdge.start["value"] = x.id
                             updateAccountsEdge.end["value"] = z.id
                             updateAccountsEdge.properties["description"] = "The source possesses the 'Update Accounts' JSS Object permission which allows altering the permissions of accounts to include resetting passwords or making themself or others administrators."
+                            updateAccountsEdge = self.check_traversable(updateAccountsEdge, x)
                             self.edges.append(updateAccountsEdge)
-            if x.kind == "jamfApiClient":
+            if x.kind == "jamfApiClient" or x.kind == "jamfDisabledApiClient":
                 if "Update Accounts" in x.properties["privileges"]:
                     for z in self.accounts:
                         updateAccountsEdge = Edge("UpdateAccounts")
                         updateAccountsEdge.start["value"] = x.id
                         updateAccountsEdge.end["value"] = z.id
                         updateAccountsEdge.properties["description"] = "The source possesses the 'Update Accounts' JSS Object permission which allows altering the permissions of accounts to include resetting passwords or making themselves or others admins."
+                        updateAccountsEdge = self.check_traversable(updateAccountsEdge, x)
                         self.edges.append(updateAccountsEdge)
 
     #Compute Create Account Edge
     def create_account_Edges(self):
         for x in self.nodes:
-            if x.kind == "jamfAccount" or x.kind == "jamfGroup":
+            if x.kind == "jamfAccount" or x.kind == "jamfGroup" or x.kind == "jamfDisabledAccount":
                 if x not in self.admins:
                     if "Create Accounts" in x.properties["privilegesJSSObjects"]:
                         updateAccountsEdge = Edge("CreateAccounts")
                         updateAccountsEdge.start["value"] = x.id
                         updateAccountsEdge.end["value"] = self.tenantID # "T-1"
                         updateAccountsEdge.properties["description"] = "The account possesses the 'Create Accounts' JSS Object permission which allows creating new accounts including administrators."
+                        updateAccountsEdge = self.check_traversable(updateAccountsEdge, x)
                         self.edges.append(updateAccountsEdge)
-            if x.kind == "jamfApiClient":
+            if x.kind == "jamfApiClient" or x.kind == "jamfDisabledApiClient":
                 if "Create Accounts" in x.properties["privileges"]:
                     updateAccountsEdge = Edge("CreateAccounts")
                     updateAccountsEdge.start["value"] = x.id
                     updateAccountsEdge.end["value"] = self.tenantID # "T-1"
                     updateAccountsEdge.properties["description"] = "The account possesses the 'Create Accounts' JSS Object permission which allows creating new accounts including administrators."
+                    updateAccountsEdge = self.check_traversable(updateAccountsEdge, x)
                     self.edges.append(updateAccountsEdge)
 
     # Compute Push Scripts and Policies Edge #TODO : This may need to be updated to handle multiple sites assigned to an account
     def policies_and_scripts_Edges(self):
         for x in self.nodes:
-            if x.kind == "jamfAccount" or x.kind == "jamfGroup":
+            if x.kind == "jamfAccount" or x.kind == "jamfDisabledAccount" or x.kind == "jamfGroup":
                 if x not in self.admins:
                     if "Create Policies" in x.properties["privilegesJSSObjects"] or "Update Policies" in x.properties["privilegesJSSObjects"]:
                         self.policies_Edges(x)
@@ -510,6 +515,7 @@ class Preprocessor():
                                         scriptsPoliciesEdge.start["value"] = x.id
                                         scriptsPoliciesEdge.end["value"] = k.id
                                         scriptsPoliciesEdge.properties["description"] = "The source can create or update scripts to be executed with policies on the target."
+                                        scriptsPoliciesEdge = self.check_traversable(scriptsPoliciesEdge, x)
                                         self.edges.append(scriptsPoliciesEdge)
                             else:
                                 # Iterate through computers
@@ -518,8 +524,9 @@ class Preprocessor():
                                     scriptsPoliciesEdge.start["value"] = x.id
                                     scriptsPoliciesEdge.end["value"] = l.id
                                     scriptsPoliciesEdge.properties["description"] = "The source can create or update scripts to be executed with policies on the target."
+                                    scriptsPoliciesEdge = self.check_traversable(scriptsPoliciesEdge, x)
                                     self.edges.append(scriptsPoliciesEdge)
-            if x.kind == "jamfApiClient":
+            if x.kind == "jamfApiClient" or x.kind == "jamfDisabledApiClient":
                 if "Create Policies" in x.properties.get("privileges") or "Update Policies" in x.properties.get("privileges"):
                     self.policies_Edges(x)
                     if "Create Scripts" in x.properties["privileges"] or "Update Scripts" in x.properties["privileges"]:
@@ -529,6 +536,7 @@ class Preprocessor():
                             scriptsPoliciesEdge.start["value"] = x.id
                             scriptsPoliciesEdge.end["value"] = l.id
                             scriptsPoliciesEdge.properties["description"] = "The source can create or update scripts to be executed with policies on the target."
+                            scriptsPoliciesEdge = self.check_traversable(scriptsPoliciesEdge, x)
                             self.edges.append(scriptsPoliciesEdge)
 
     # Compute Policies Edge
@@ -541,6 +549,7 @@ class Preprocessor():
                     policiesEdge.start["value"] = account_node.id
                     policiesEdge.end["value"] = k.id
                     policiesEdge.properties["description"] = "The source can create or update policies to execute commands on the target."
+                    policiesEdge = self.check_traversable(policiesEdge, account_node)
                     self.edges.append(policiesEdge)
         else:
             # Iterate through computers
@@ -549,6 +558,7 @@ class Preprocessor():
                 policiesEdge.start["value"] = account_node.id
                 policiesEdge.end["value"] = l.id
                 policiesEdge.properties["description"] = "The source can create or update policies to execute commands on the target."
+                policiesEdge = self.check_traversable(policiesEdge, account_node) # Use defined class method
                 self.edges.append(policiesEdge)
 
     # Compute MemberOf Edge
@@ -557,20 +567,21 @@ class Preprocessor():
             if t.kind == "jamfGroup":
                 for b in eval(t.properties.get("members")):
                     for c in self.nodes:
-                        if c.kind == "jamfAccount":
+                        if c.kind == "jamfAccount" or c.kind == "jamfDisabledAccount":
                             #TODO: Hardcoded string comparison, find a better way to check this
                             if str(str(self.tenantID) + "-A" + str(b.get("id"))) == c.id and b.get("name") == c.properties.get("name"):
                                 memberOfEdge = Edge("MemberOf")
                                 memberOfEdge.start["value"] = c.id
                                 memberOfEdge.end["value"] = t.id
                                 memberOfEdge.properties["description"] = "The source node is a member of the destination node."
+                                memberOfEdge = self.check_traversable(memberOfEdge, c)
                                 self.edges.append(memberOfEdge)
 
 
     # Global only, not restricted to sites
     def computerExtension_Edges(self):
         for x in self.nodes:
-            if x.kind == "jamfAccount" or x.kind == "jamfGroup":
+            if x.kind == "jamfAccount" or x.kind == "jamfDisabledAccount" or x.kind == "jamfGroup":
                 if x not in self.admins:
                     if "Create Computer Extension Attributes" in x.properties["privilegesJSSObjects"] or "Update Computer Extension Attributes" in x.properties["privilegesJSSObjects"]:
                         for z in self.computers:
@@ -578,36 +589,40 @@ class Preprocessor():
                              computerExtensionEdge.start["value"] = x.id
                              computerExtensionEdge.end["value"] = z.id
                              computerExtensionEdge.properties["description"] = "The source can create or update computer extensions executing code on all computers in the JAMF tenant."
+                             computerExtensionEdge = self.check_traversable(computerExtensionEdge, x)
                              self.edges.append(computerExtensionEdge) 
-            if x.kind == "jamfApiClient":
+            if x.kind == "jamfApiClient" or x.kind == "jamfDisabledApiClient":
                 if "Create Computer Extension Attributes" in x.properties.get("privileges") or "Update Computer Extension Attributes" in x.properties.get("privileges"):
                     for l in self.computers:
                         computerExtensionEdge = Edge("ComputerExtensions")
                         computerExtensionEdge.start["value"] = x.id
                         computerExtensionEdge.end["value"] = l.id
                         computerExtensionEdge.properties["description"] = "The source can create or update computer extensions executing code on all computers in the JAMF tenant."
+                        computerExtensionEdge = self.check_traversable(computerExtensionEdge, x)
                         self.edges.append(computerExtensionEdge)
 
 
     # Global only, not site restricted
     def createApiIntegrations_Edges(self):
         for x in self.nodes:
-            if x.kind == "jamfAccount" or x.kind == "jamfGroup":
+            if x.kind == "jamfAccount" or x.kind == "jamfDisabledAccount" or x.kind == "jamfGroup":
                 if x not in self.admins:
                     if "Create API Integrations" in x.properties["privilegesJSSObjects"]:
                          computerExtensionEdge = Edge("CreateAPIClients")
                          computerExtensionEdge.start["value"] = x.id
                          computerExtensionEdge.end["value"] = self.tenantID
                          computerExtensionEdge.properties["description"] = "The source can create API clients to assume API Roles in the JAMF tenant."
+                         computerExtensionEdge = self.check_traversable(computerExtensionEdge, x)
                          self.edges.append(computerExtensionEdge)
                          self.createApiRoles_Edges(x) # Only create the create or update API roles edges if we can create or update clients
                          self.updateApiRoles_Edges(x)
-            if x.kind == "jamfApiClient":
+            if x.kind == "jamfApiClient" or x.kind == "jamfDisabledApiClient":
                 if "Create API Integrations" in x.properties.get("privileges"):
                     computerExtensionEdge = Edge("CreateAPIClients")
                     computerExtensionEdge.start["value"] = x.id
                     computerExtensionEdge.end["value"] = self.tenantID
                     computerExtensionEdge.properties["description"] = "The source can create API clients to assume API Roles in the JAMF tenant."
+                    computerExtensionEdge = self.check_traversable(computerExtensionEdge, x)
                     self.edges.append(computerExtensionEdge)
                     self.createApiRoles_Edges(x) # Only create the create or update API roles edges if we can create or update clients
                     self.updateApiRoles_Edges(x)
@@ -615,7 +630,7 @@ class Preprocessor():
     # Global only, not restricted to sites
     def updateApiIntegrations_Edges(self):
         for x in self.nodes:
-            if x.kind == "jamfAccount" or x.kind == "jamfGroup":
+            if x.kind == "jamfAccount" or x.kind == "jamfDisabledAccount" or x.kind == "jamfGroup":
                 if x not in self.admins:
                     if "Update API Integrations" in x.properties["privilegesJSSObjects"]:
                         for z in self.apiclients:
@@ -623,55 +638,61 @@ class Preprocessor():
                              computerExtensionEdge.start["value"] = x.id
                              computerExtensionEdge.end["value"] = z.id
                              computerExtensionEdge.properties["description"] = "The source can update update API Clients in the JAMF tenant."
+                             computerExtensionEdge = self.check_traversable(computerExtensionEdge, x)
                              self.edges.append(computerExtensionEdge)
                              self.createApiRoles_Edges(x) # Only create the create or update API roles edges if we can create or update clients #TODO: Dedup this
                              self.updateApiRoles_Edges(x)
-            if x.kind == "jamfApiClient":
+            if x.kind == "jamfApiClient" or x.kind == "jamfDisabledApiClient":
                 if "Update API Integrations" in x.properties.get("privileges"):
                     for l in self.apiclients:
                         computerExtensionEdge = Edge("UpdateAPIClients")
                         computerExtensionEdge.start["value"] = x.id
                         computerExtensionEdge.end["value"] = l.id
                         computerExtensionEdge.properties["description"] = "The source can update API Clients in the JAMF tenant."
+                        computerExtensionEdge = self.check_traversable(computerExtensionEdge, x)
                         self.edges.append(computerExtensionEdge)
                         self.createApiRoles_Edges(x) # Only create the create or update API roles edges if we can create or update clients
                         self.updateApiRoles_Edges(x)
 
     # Global only, not site restricted
     def createApiRoles_Edges(self, x):
-            if x.kind == "jamfAccount" or x.kind == "jamfGroup":
+            if x.kind == "jamfAccount" or x.kind == "jamfDisabledAccount" or x.kind == "jamfGroup":
                 if x not in self.admins:
                     if "Create API Roles" in x.properties["privilegesJSSObjects"]:
                          computerExtensionEdge = Edge("CreateAPIRoles")
                          computerExtensionEdge.start["value"] = x.id
                          computerExtensionEdge.end["value"] = self.tenantID
                          computerExtensionEdge.properties["description"] = "The source can create API Roles in the JAMF tenant and generate credentials for API clients."
+                         computerExtensionEdge = self.check_traversable(computerExtensionEdge, x)
                          self.edges.append(computerExtensionEdge)
-            if x.kind == "jamfApiClient":
+            if x.kind == "jamfApiClient" or x.kind == "jamfDisabledApiClient":
                 if "Create API Roles" in x.properties.get("privileges"):
                     computerExtensionEdge = Edge("CreateAPIRoles")
                     computerExtensionEdge.start["value"] = x.id
                     computerExtensionEdge.end["value"] = self.tenantID
                     computerExtensionEdge.properties["description"] = "The source can create API Roles in the JAMF tenant and generate credentials for API clients."
+                    computerExtensionEdge = self.check_traversable(computerExtensionEdge, x)
                     self.edges.append(computerExtensionEdge)
 
 
     # Global only, not site restricted
     def updateApiRoles_Edges(self, x):
-            if x.kind == "jamfAccount" or x.kind == "jamfGroup":
+            if x.kind == "jamfAccount" or x.kind == "jamfDisabledAccount" or x.kind == "jamfGroup":
                 if x not in self.admins:  
                     if "Update API Roles" in x.properties["privilegesJSSObjects"]:
                          computerExtensionEdge = Edge("UpdateAPIRoles")  
                          computerExtensionEdge.start["value"] = x.id
                          computerExtensionEdge.end["value"] = self.tenantID
                          computerExtensionEdge.properties["description"] = "The source can update API Roles in the JAMF tenant."
+                         computerExtensionEdge = self.check_traversable(computerExtensionEdge, x)
                          self.edges.append(computerExtensionEdge)
-            if x.kind == "jamfApiClient":
+            if x.kind == "jamfApiClient" or x.kind == "jamfDisabledApiClient":
                 if "Update API Roles" in x.properties.get("privileges"):
                     computerExtensionEdge = Edge("UpdateAPIRoles")  
                     computerExtensionEdge.start["value"] = x.id
                     computerExtensionEdge.end["value"] = self.tenantID
                     computerExtensionEdge.properties["description"] = "The source can update API Roles in the JAMF tenant."
+                    computerExtensionEdge = self.check_traversable(computerExtensionEdge, x)
                     self.edges.append(computerExtensionEdge)
 
     # Global only, not site restricted #TODO: This could probably be generalized to just a create edge function call
@@ -683,6 +704,7 @@ class Preprocessor():
                     computerUserEdge.start["value"] = n.id
                     computerUserEdge.end["value"] = m.id
                     computerUserEdge.properties["description"] = "The specified user is assigned to the source computer."
+                    computerUserEdge.properties["traversable"] = True
                     self.edges.append(computerUserEdge)
 
 
@@ -696,6 +718,7 @@ class Preprocessor():
                          matchEdge.start["value"] = x.id
                          matchEdge.end["value"] = y.id
                          matchEdge.properties["description"] = "The JAMF principal email attribute matched the JAMF account email indicating it is likely the same account."
+                         matchEdge.properties["traversable"] = True
                          self.edges.append(matchEdge)
 
    #TODO : Edge for display names/names matching
