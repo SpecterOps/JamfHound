@@ -47,7 +47,7 @@ class Preprocessor():
         self.computerusers = []
         self.accounts = []
         self.apiclients = []
-        self.sites = {}
+        self.sites = []
         self.tenant = jtenant
         self.tenantID = ""
         self.edges = []
@@ -378,6 +378,7 @@ class Preprocessor():
             newsite.properties["objectid"] = newsite.id
             newsite.properties["displayname"] = newsite.properties.get("name")
             newsite.properties["siteID"] = s['id']
+            self.sites.append(newsite)
             self.nodes.append(newsite)
 
     # Method to ensure edges from nodes are set traversable so long as accounts are enabled
@@ -507,38 +508,39 @@ class Preprocessor():
                 if x not in self.admins:
                     if "Create Policies" in x.properties["privilegesJSSObjects"] or "Update Policies" in x.properties["privilegesJSSObjects"]:
                         self.policies_Edges(x)
-                        if "Create Scripts" in x.properties["privilegesJSSObjects"] or "Update Scripts" in x.properties["privilegesJSSObjects"]:
-                            # Check for site limitations #TODO : This may need to be updated in the future to handle accounts assigned to multiple sites
-                            if x.properties.get("accessLevel") == "Site Access":
-                                for k in self.computers:
-                                    if k.properties.get("siteID") == x.properties.get("siteID"):
-                                        scriptsPoliciesEdge = Edge("Scripts")
-                                        scriptsPoliciesEdge.start["value"] = x.id
-                                        scriptsPoliciesEdge.end["value"] = k.id
-                                        scriptsPoliciesEdge.properties["description"] = "The source can create or update scripts to be executed with policies on the target."
-                                        scriptsPoliciesEdge = self.check_traversable(scriptsPoliciesEdge, x)
-                                        self.edges.append(scriptsPoliciesEdge)
-                            else:
-                                # Iterate through computers
-                                for l in self.computers:
+                    if "Create Scripts" in x.properties["privilegesJSSObjects"] or "Update Scripts" in x.properties["privilegesJSSObjects"]:
+                        # Check for site limitations #TODO : This may need to be updated in the future to handle accounts assigned to multiple sites
+                        if x.properties.get("accessLevel") == "Site Access":
+                            for k in self.sites:
+                                if k.properties.get("siteID") == x.properties.get("siteID"):
                                     scriptsPoliciesEdge = Edge("Scripts")
                                     scriptsPoliciesEdge.start["value"] = x.id
-                                    scriptsPoliciesEdge.end["value"] = l.id
-                                    scriptsPoliciesEdge.properties["description"] = "The source can create or update scripts to be executed with policies on the target."
-                                    scriptsPoliciesEdge = self.check_traversable(scriptsPoliciesEdge, x)
+                                    scriptsPoliciesEdge.end["value"] = k.id
+                                    scriptsPoliciesEdge.properties["description"] = "The source can create or update scripts on the target."
+#                                        scriptsPoliciesEdge = self.check_traversable(scriptsPoliciesEdge, x)
+                                    scriptsPoliciesEdge.properties["traversable"] = False # Make non-traversable until we get logic for checking if there are any recurring script executions
                                     self.edges.append(scriptsPoliciesEdge)
+                        else:
+#                                for l in self.computers:
+                            scriptsPoliciesEdge = Edge("Scripts")
+                            scriptsPoliciesEdge.start["value"] = x.id
+                            scriptsPoliciesEdge.end["value"] = self.tenantID
+                            scriptsPoliciesEdge.properties["description"] = "The source can create or update scripts on the target."
+#                                scriptsPoliciesEdge = self.check_traversable(scriptsPoliciesEdge, x)
+                            scriptsPoliciesEdge.properties["traversable"] = False # Make non-traversable until we get logic for checking if there are any recurring script executions
+                            self.edges.append(scriptsPoliciesEdge)
             if x.kind == "jamfApiClient" or x.kind == "jamfDisabledApiClient":
                 if "Create Policies" in x.properties.get("privileges") or "Update Policies" in x.properties.get("privileges"):
                     self.policies_Edges(x)
-                    if "Create Scripts" in x.properties["privileges"] or "Update Scripts" in x.properties["privileges"]:
-                        # Iterate through computers
-                        for l in self.computers:
-                            scriptsPoliciesEdge = Edge("Scripts")
-                            scriptsPoliciesEdge.start["value"] = x.id
-                            scriptsPoliciesEdge.end["value"] = l.id
-                            scriptsPoliciesEdge.properties["description"] = "The source can create or update scripts to be executed with policies on the target."
-                            scriptsPoliciesEdge = self.check_traversable(scriptsPoliciesEdge, x)
-                            self.edges.append(scriptsPoliciesEdge)
+                if "Create Scripts" in x.properties["privileges"] or "Update Scripts" in x.properties["privileges"]:
+#                    for l in self.computers:
+                    scriptsPoliciesEdge = Edge("Scripts")
+                    scriptsPoliciesEdge.start["value"] = x.id
+                    scriptsPoliciesEdge.end["value"] = self.tenantID
+                    scriptsPoliciesEdge.properties["description"] = "The source can create or update scripts on the target."
+#                        scriptsPoliciesEdge = self.check_traversable(scriptsPoliciesEdge, x)
+                    scriptsPoliciesEdge.properties["traversable"] = False
+                    self.edges.append(scriptsPoliciesEdge)
 
     # Compute Policies Edge
     def policies_Edges(self, account_node):
