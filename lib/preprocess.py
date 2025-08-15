@@ -48,6 +48,7 @@ class Preprocessor():
         self.accounts = []
         self.apiclients = []
         self.sites = []
+        self.groups = []
         self.tenant = jtenant
         self.tenantID = ""
         self.edges = []
@@ -264,6 +265,7 @@ class Preprocessor():
             except Exception as f:
                 pass #TODO: Log Errors
             newaccount.properties["members"] = str(x["group"]["members"])
+            self.groups.append(newaccount)
             self.nodes.append(newaccount)
 
     #Add Assigned User Nodes
@@ -470,6 +472,13 @@ class Preprocessor():
                             updateAccountsEdge.properties["description"] = "The source possesses the 'Update Accounts' JSS Object permission which allows altering the permissions of accounts to include resetting passwords or making themself or others administrators."
                             updateAccountsEdge = self.check_traversable(updateAccountsEdge, x)
                             self.edges.append(updateAccountsEdge)
+                        for v in self.groups: # If a principal has Update Accounts they can also Update Groups
+                            updateGroupsEdge = Edge("UpdateGroups")
+                            updateGroupsEdge.start["value"] = x.id
+                            updateGroupsEdge.end["value"] = v.id
+                            updateGroupsEdge.properties["description"] = "The source possesses the 'Update Accounts' JSS Object permission which allows altering groups to include modifying members and assigned permissions."
+                            updateGroupsEdge = self.check_traversable(updateGroupsEdge, x)
+                            self.edges.append(updateGroupsEdge)
             if x.kind == "jamfApiClient" or x.kind == "jamfDisabledApiClient":
                 if "Update Accounts" in x.properties["privileges"]:
                     for z in self.accounts:
@@ -479,6 +488,13 @@ class Preprocessor():
                         updateAccountsEdge.properties["description"] = "The source possesses the 'Update Accounts' JSS Object permission which allows altering the permissions of accounts to include resetting passwords or making themselves or others admins."
                         updateAccountsEdge = self.check_traversable(updateAccountsEdge, x)
                         self.edges.append(updateAccountsEdge)
+                    for v in self.groups: # If a principal has Update Accounts they can also Update Groups
+                        updateGroupsEdge = Edge("UpdateGroups")
+                        updateGroupsEdge.start["value"] = x.id
+                        updateGroupsEdge.end["value"] = v.id
+                        updateGroupsEdge.properties["description"] = "The source possesses the 'Update Accounts' JSS Object permission which allows altering groups to include modifying members and assigned permissions."
+                        updateGroupsEdge = self.check_traversable(updateGroupsEdge, x)
+                        self.edges.append(updateGroupsEdge) 
 
     #Compute Create Account Edge
     def create_account_Edges(self):
@@ -492,14 +508,28 @@ class Preprocessor():
                         updateAccountsEdge.properties["description"] = "The account possesses the 'Create Accounts' JSS Object permission which allows creating new accounts including administrators."
                         updateAccountsEdge = self.check_traversable(updateAccountsEdge, x)
                         self.edges.append(updateAccountsEdge)
+
+                        createGroupEdge = Edge("CreateGroups")
+                        createGroupEdge.start["value"] = x.id
+                        createGroupEdge.end["value"] = self.tenantID # "T-1"
+                        createGroupEdge.properties["description"] = "The account possesses the 'Create Accounts' JSS Object permission which allows creating new groups and assigning memberships with permissions."
+                        createGroupEdge = self.check_traversable(createGroupEdge, x)
+                        self.edges.append(createGroupEdge)
             if x.kind == "jamfApiClient" or x.kind == "jamfDisabledApiClient":
                 if "Create Accounts" in x.properties["privileges"]:
                     updateAccountsEdge = Edge("CreateAccounts")
                     updateAccountsEdge.start["value"] = x.id
                     updateAccountsEdge.end["value"] = self.tenantID # "T-1"
-                    updateAccountsEdge.properties["description"] = "The account possesses the 'Create Accounts' JSS Object permission which allows creating new accounts including administrators."
+                    updateAccountsEdge.properties["description"] = "The API client possesses the 'Create Accounts' JSS Object permission which allows creating new accounts including administrators."
                     updateAccountsEdge = self.check_traversable(updateAccountsEdge, x)
                     self.edges.append(updateAccountsEdge)
+
+                    createGroupEdge = Edge("CreateGroups")
+                    createGroupEdge.start["value"] = x.id
+                    createGroupEdge.end["value"] = self.tenantID # "T-1"
+                    createGroupEdge.properties["description"] = "The API client possesses the 'Create Accounts' JSS Object permission which allows creating new groups and assigning memberships with permissions."
+                    createGroupEdge = self.check_traversable(createGroupEdge, x)
+                    self.edges.append(createGroupEdge)
 
     # Compute Push Scripts and Policies Edge #TODO : This may need to be updated to handle multiple sites assigned to an account
     def policies_and_scripts_Edges(self):
@@ -517,28 +547,23 @@ class Preprocessor():
                                     scriptsPoliciesEdge.start["value"] = x.id
                                     scriptsPoliciesEdge.end["value"] = k.id
                                     scriptsPoliciesEdge.properties["description"] = "The source can create or update scripts on the target."
-#                                        scriptsPoliciesEdge = self.check_traversable(scriptsPoliciesEdge, x)
                                     scriptsPoliciesEdge.properties["traversable"] = False # Make non-traversable until we get logic for checking if there are any recurring script executions
                                     self.edges.append(scriptsPoliciesEdge)
                         else:
-#                                for l in self.computers:
                             scriptsPoliciesEdge = Edge("Scripts")
                             scriptsPoliciesEdge.start["value"] = x.id
                             scriptsPoliciesEdge.end["value"] = self.tenantID
                             scriptsPoliciesEdge.properties["description"] = "The source can create or update scripts on the target."
-#                                scriptsPoliciesEdge = self.check_traversable(scriptsPoliciesEdge, x)
                             scriptsPoliciesEdge.properties["traversable"] = False # Make non-traversable until we get logic for checking if there are any recurring script executions
                             self.edges.append(scriptsPoliciesEdge)
             if x.kind == "jamfApiClient" or x.kind == "jamfDisabledApiClient":
                 if "Create Policies" in x.properties.get("privileges") or "Update Policies" in x.properties.get("privileges"):
                     self.policies_Edges(x)
                 if "Create Scripts" in x.properties["privileges"] or "Update Scripts" in x.properties["privileges"]:
-#                    for l in self.computers:
                     scriptsPoliciesEdge = Edge("Scripts")
                     scriptsPoliciesEdge.start["value"] = x.id
                     scriptsPoliciesEdge.end["value"] = self.tenantID
                     scriptsPoliciesEdge.properties["description"] = "The source can create or update scripts on the target."
-#                        scriptsPoliciesEdge = self.check_traversable(scriptsPoliciesEdge, x)
                     scriptsPoliciesEdge.properties["traversable"] = False
                     self.edges.append(scriptsPoliciesEdge)
 
@@ -735,3 +760,24 @@ class Preprocessor():
                         matchEdge.properties["description"] = "The Jamf principal name or displayname attributes matched the Jamf account name."
                         matchEdge.properties["traversable"] = True
                         self.edges.append(matchEdge)
+
+#    def create_group_Edge(self):
+#        for x in self.nodes:
+#            if x.kind == "jamfAccount" or x.kind == "jamfGroup" or x.kind == "jamfDisabledAccount":
+#                if x not in self.admins:
+#                    if "Create Groups" in x.properties["privilegesJSSObjects"]:
+#                        updateAccountsEdge = Edge("CreateAccounts")
+#                        updateAccountsEdge.start["value"] = x.id
+#                        updateAccountsEdge.end["value"] = self.tenantID # "T-1"
+#                        updateAccountsEdge.properties["description"] = "The account possesses the 'Create Accounts' JSS Object permission which allows creating new accounts including administrators."
+#                        updateAccountsEdge = self.check_traversable(updateAccountsEdge, x)
+#                        self.edges.append(updateAccountsEdge)
+#            if x.kind == "jamfApiClient" or x.kind == "jamfDisabledApiClient":
+#                if "Create Accounts" in x.properties["privileges"]:
+#                    updateAccountsEdge = Edge("CreateAccounts")
+#                    updateAccountsEdge.start["value"] = x.id
+#                    updateAccountsEdge.end["value"] = self.tenantID # "T-1"
+#                    updateAccountsEdge.properties["description"] = "The account possesses the 'Create Accounts' JSS Object permission which allows creating new accounts including administrators."
+#                    updateAccountsEdge = self.check_traversable(updateAccountsEdge, x)
+#                    self.edges.append(updateAccountsEdge)
+             
