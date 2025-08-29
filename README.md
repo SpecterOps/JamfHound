@@ -50,6 +50,13 @@ Use the custom cypher queries contained in the JamfHound repository to view and 
 
 Note: Uploads of multiple Jamf tenants that use the same domain name may result in unexpected node collisions. While this is extremely rare, if you have multiple tenants you wish to collect that use the same URL/domain name for access, use either multiple BH instances or delete data between collections. 
 
+## Pending Work
+1. Error Logging, currently a lot of printing to the console
+2. Parallelization with Multi-Threading to Speed Up Collection
+3. Parallelization for Preprocessing if possible
+4. Improved Error Handling and Exception Case Handling
+5. Addition of more code execution edges that have been discovered
+
 ## Contributors
 Credit to the following team members for their significant contributions in designing and developing JamfHound as an initial proof-of-concept.
 * Lance Cain - (aka robot/RobotOperator)
