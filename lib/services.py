@@ -134,6 +134,13 @@ class JAMFService(Common):
             url=f"/JSSResource/scripts/id/{identifier}"
         )
         return response
+    
+    #TODO: separate into controller
+    def getComputerExtensionAttributes(self) -> Any:
+        response = self.retrieve(
+            url=f"/JSSResource/computerextensionattributes"
+        )
+        return response
 
     # TODO: separate into controller
 

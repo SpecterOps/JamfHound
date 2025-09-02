@@ -204,7 +204,7 @@ def main():
 
         # Collect accounts and users first
         try:
-            ctl.getAccounts() #TODO : Currently saving to files and loading subsequently, look into calling the JAMF class getAccounts to just use raw JSON
+            ctl.getAccounts()
         except Exception as e:
             ctl.view.error(e)
             ctl.view.failure(f"Failed to collect accounts: {e}")
@@ -240,6 +240,21 @@ def main():
             cptrs.view.failure(f"Failed to collect groups: {e}")
         #TODO: Collect Policies to determine if any scripts are recurring/can be updated alone
         try:
+            pols = PolicyController(**args.__dict__)
+            pols.getPolicies()
+        except Exception as e:
+            pols.view.error(e)
+            pols.view.failure(f"Failed to collect policies: {e}")
+        # Collect Scripts
+        try:
+            scripts = jservice.getScripts()
+            cptrs.view.success("Saving scripts to scripts.json") #TODO either write a sites controller or stop using controllers and pass directly for processing
+            jservice.writeJsonFile("scripts.json", scripts)
+        except Exception as e:
+            cptrs.view.error(e)
+            cptrs.view.failure(f"Failed to collect scripts: {e}")   
+        # Api Clients and Roles Collection
+        try:
             apiRoles = jservice.getApiRoles()
             jservice.writeJsonFile("apiroles.json", apiRoles)
         except Exception as e:
@@ -255,7 +270,7 @@ def main():
         # Preprocessing to create JSON to import into BloodHound
         jamfPreprocessor = Preprocessor(args.baseUrl)
         jamfPreprocessor.process_nodes()
-        cptrs.view.success(jamfPreprocessor.write_out_collection())
+        cptrs.view.success(jamfPreprocessor.write_out_collection(jservice))
         return
 
     if args.checkAzureUsers:

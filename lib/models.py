@@ -64,5 +64,21 @@ class Data(Object, Generic[_T]):
     def properties(self) -> dict:
         return {
             "data": self.data,
-            "meta": self.meta.properties()
+            "meta": self.meta.properties() # type: ignore
         }
+
+# Minimum required attributes for edges in BH Generic Ingest
+class Edge():
+    def __init__(self, nkind):
+        self.kind = nkind
+        self.start = {"value": "", "match_by": "id"}
+        self.end = {"value": "", "match_by": "id"}
+        self.properties = {"description":"", "traversable":False}
+
+# Minimum required attributes for nodes in BH Generic Ingest
+class Node():
+    def __init__(self, nkind):
+        self.id = ""
+        self.kind = nkind
+        self.properties = {}
+        self.properties["Tier"] = 1

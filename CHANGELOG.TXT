@@ -1,0 +1,20 @@
+V1.1 - August 29, 2025
+- jamf prefix changed from "jamf" to "jamf_" to make reading edges and node titles easier
+- Added jamf_UpdateRecurringScripts and jamf_MatchedName edges
+- Added traversable property to edges to allow cypher queries focusing on traversable and non-traversable informational edges
+- Added Tier property to nodes
+- Accounts, Disabled Accounts, and Groups with Full Administrative Access to the Jamf Pro tenant are marked as Tier 0
+- All other principals and nodes are marked as Tier 1 to indicate a lower privileged principal
+- Updated create_jamf_icons.py and preprocess.py to handle new node scheme
+- Segmented edges into edges.py to make code more modular and easier to maintain
+- Implemented additional policies and script collectors in services.py and preprocess.py to populate custom policy and script information in edges
+- Updated Api Client edges to now include: jamf_Create_API_Client_and_Create_Role, jamf_Create_API_Client_and_Update_Role, jamf_Create_API_Client_and_Assign_Role, jamf_Update_API_Client_and_Update_Roles, jamf_Update_API_Client_and_Create_Roles, jamf_Update_API_Client_and_Assign_Role, jamf_Update_Self_and_Update_Roles, jamf_Update_Self_and_Create_Roles, jamf_Update_Self_and_Assign_Roles, jamf_CreateAPIRoles, jamf_UpdateAPIRoles, jamf_Update_Roles_Assigned_To_Self
+- Added a match on display name and name between jamf_ComputerUser and jamf_Account
+- Updated Cypher Queries to reflect the new prefix and added a couple more for finding lower principals with control over high privileged ones
+
+v1.0 - Initial Release at BlackHat USA 2025 August 6, 2025
+- Included Jamf Nodes and Edges preprended with jamfXXX
+- Nodes included: jamfAccount, jamfDisabledAccount, jamfApiClient, jamfDisabledApiClient, jamfTenant, jamfGroup, jamfComputerUser, jamfComputer, jamfSite
+- Edges: jamfContains, jamfAdminTo, jamfAdminToSite, jamfUpdateAccounts, jamfCreateAccounts, jamfScripts, jamfPolicies, jamfMemberOf, jamfComputerExtensions, jamfCreateAPIClients, jamfUpdateAPIClients, jamfCreateAPIRoles, jamfUpdateAPIRoles, jamfAssignedUser, jamfMatchedEmail 
+- Initial recommended cypher queries released
+- create_jamf_icons.py released to allow users to associate custom icons with Jamf nodes
