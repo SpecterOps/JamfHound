@@ -1,0 +1,92 @@
+[
+  {
+    "name": "Jamf: All Nodes and Edges",
+    "description": "Retrieve all nodes and edges where either a JamfHound node has an inbound or outbound relationship, limits results to 1000",
+    "query": "MATCH p=(s)-[]->(t)\nWHERE s.primarykind STARTS WITH 'jamf' OR t.primarykind STARTS WITH 'jamf'\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: Account Access by Name",
+    "description": "Filter to view access of a Jamf Account named or starting with 'LC' - increase the maximum edges to see more relationships (i.e. change 5 to 6 to see 1 more)",
+    "query": "MATCH p=(s:jamf_Account)-[*1..5]->(t)\nWHERE s.name STARTS WITH 'LC'\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: All Account Paths",
+    "description": "View paths originating from Jamf Accounts with up to 4 edges - increase edges to see more",
+    "query": "MATCH p=(s:jamf_Account)-[*1..4]->(t)\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: API Client Immediate Edges",
+    "description": "View immediate edges and impacted principals for Jamf API Clients",
+    "query": "MATCH p=(s:jamf_ApiClient)- [] ->(t)\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: API Client Attack Paths to Tenant",
+    "description": "Display up to 4 edges in attack paths originating from Jamf API Clients with a matching name or name starting with DEMO targeting the tenant",
+    "query": "MATCH p=(s:jamf_ApiClient)-[*1..4]->(t:jamf_Tenant)\nWHERE s.name STARTS WITH 'DEMO'\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: All Computers",
+    "description": "Get all Computers",
+    "query": "MATCH p=(s:jamf_Computer)\nRETURN p"
+  },
+  {
+    "name": "Jamf: All Groups",
+    "description": "Get Jamf Groups",
+    "query": "MATCH p=(s:jamf_Group)\nRETURN p"
+  },
+  {
+    "name": "Jamf: Tier 1 to Tier 0 Direct Edges",
+    "description": "Retrieve direct edges between Tier 1 nodes and Tier 0 nodes",
+    "query": "MATCH p=(s)-[]->(t)\nWHERE s.Tier = 1 AND t.Tier = 0\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: Tier 1 to Tier 0 Without Contains",
+    "description": "Filter out jamf_Contains edges from Tiered node query",
+    "query": "MATCH p=(s)-[r]->(t)\nWHERE s.Tier = 1 AND t.Tier = 0\nAND type(r) <> 'jamf_Contains'\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: Expanded Tier 1 to Tier 0 Paths",
+    "description": "Expand the graph by one edge showing nodes with edges to Tier 1 nodes with edges to Tier 0 nodes",
+    "query": "MATCH p=(a) - [] -> (s)-[r]->(t)\nWHERE s.Tier = 1 AND t.Tier = 0\nAND type(r) <> 'jamf_Contains'\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: Group Administrators Targeted Edges",
+    "description": "Targeted Filtering Query, display nodes with edges between 'GROUP_ADMINISTRATORS' and 'UPDATE' or 'GROUP_ADMINISTRATORS' and other nodes that start with 'SOL'",
+    "query": "MATCH p=(s)-[]->(t)\nWHERE s.name STARTS WITH 'GROUP_ADMINISTRATORS' AND t.name STARTS WITH 'UPDATE' OR s.name STARTS WITH 'GROUP_ADMINISTRATORS' AND t.name STARTS WITH 'SOL'\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: Group Administrators Filtered Relationships",
+    "description": "Targeted Filtering that limits results to starting jamf_Group nodes starting with 'TENANT' in the name and only show edges/relationships specified by r that are one of the three specified edges",
+    "query": "MATCH p=(s)-[r]->(t)\nWHERE s.name STARTS WITH 'TENANT'\nAND s.primarykind = 'jamf_Group'\nAND (t.name STARTS WITH 'UPDATE' OR t.name STARTS WITH 'SOL')\nAND (type(r) = 'jamf_UpdateAccounts' OR type(r) = 'jamf_CreateAccounts' OR type(r) = 'jamf_AdminTo')\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: Chained Targeted Filtering",
+    "description": "An example of chained targeted filtering with multiple conditions in series that creates multiple proprety filters such as restricting to nodes with specific strings in their name, kinds of nodes, and types of edge relationships existing between the nodes",
+    "query": "MATCH p=(s)-[r]->(t)\nWHERE s.name STARTS WITH 'TENANT_ADMIN'\nAND (t.name STARTS WITH 'UPDATE' OR t.name STARTS WITH 'SOL' OR t.name STARTS WITH 'JVM')\nAND (type(r) = 'jamf_UpdateAccounts' OR type(r) = 'jamf_CreateAccounts' OR type(r) = 'jamf_CreatePolicies' OR type(r) = 'jamf_AdminTo')\nOR\ns.primarykind = 'jamf_Account' AND (s.name IN ['EXAMPLE', 'REG', 'LCAIN'])\nAND type(r) = 'jamf_AdminTo'\nOR\nt.primarykind STARTS WITH 'jamf_Computer' AND s.primarykind = 'jamf_Account'\nAND s.name STARTS WITH 'AZURE'\nOR\ns.primarykind = 'jamf_Tenant'\nAND type(r) = 'jamf_Contains'\nAND (t.primarykind = 'jamf_Site' OR t.primarykind = 'jamf_Computer')\nOR\n(s.primarykind = 'jamf_Site' AND t.primarykind = 'jamf_Computer')\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: Tier 1 to Tier 0 Attack Paths",
+    "description": "Retrieve attack paths between Tier 1 nodes and Tier 0 nodes that are fully traversable - excludes tenant and site nodes as starting points",
+    "query": "MATCH p=(s)-[r*1..5]->(t)\nWHERE s.Tier = 1 AND t.Tier = 0\nAND s.primarykind <> 'jamf_Tenant'\nAND s.primarykind <> 'jamf_Site'\nAND r.traversable = True\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: Group Edges to Accounts",
+    "description": "Get immediate edges impacting Jamf Accounts originating from Jamf Groups, swap jamfGroup for jamfTenant to see impact edges to the tenant from groups",
+    "query": "MATCH p=(s)-[]->(t:jamf_Account)\nWHERE s.primarykind ENDS WITH 'jamf_Group'\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: Account to Account Attack Paths",
+    "description": "Display Jamf Accounts with Attack-Paths impacting other Jamf Accounts - increase the maximum edges to see more relationships (i.e. change 5 to 6 to see 1 more)",
+    "query": "MATCH p=(s:jamf_Account)-[*1..5]->(t:jamf_Account)\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: Matched Email Edges",
+    "description": "Show nodes with the edge jamfMatchedEdmail",
+    "query": "MATCH p=(s)-[:jamf_MatchedEmail]->(t)\nRETURN p\nLIMIT 1000"
+  },
+  {
+    "name": "Jamf: Account to Tenant Edges",
+    "description": "Show edges from Jamf Accounts to the Jamf Tenant",
+    "query": "MATCH p=(s:jamf_Account)-[]->(t:jamf_Tenant)\nRETURN p\nLIMIT 1000"
+  }
+]
