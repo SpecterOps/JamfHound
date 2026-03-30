@@ -1,0 +1,74 @@
+ {
+  "custom_types": {
+    "jamf_Account": {
+      "icon": {
+        "color": "#0098BB",
+        "name": "circle-user",
+        "type": "font-awesome"
+      }
+    },
+    "jamf_Computer": {
+      "icon": {
+        "color": "#D6001C",
+        "name": "display",
+        "type": "font-awesome"
+      }
+    },
+    "jamf_Site": {
+      "icon": {
+        "color": "#D67500",
+        "name": "circle-nodes",
+        "type": "font-awesome"
+      }
+    },
+    "jamf_Group": {
+      "icon": {
+        "color": "#F0FC03",
+        "name": "people-group",
+        "type": "font-awesome"
+      }
+    },
+    "jamf_ApiClient": {
+      "icon": {
+        "color": "#8803FC",
+        "name": "user-gear",
+        "type": "font-awesome"
+      }
+    },
+    "jamf_DisabledApiClient": {
+      "icon": {
+        "color": "#909090",
+        "name": "user-gear",
+        "type": "font-awesome"
+      }
+    },
+    "jamf_ComputerUser": {
+      "icon": {
+        "color": "#FC03A5",
+        "name": "circle-user",
+        "type": "font-awesome"
+      }
+    },
+    "jamf_Tenant": {
+      "icon": {
+        "color": "#00C08D",
+        "name": "cloud",
+        "type": "font-awesome"
+      }
+    },
+    "jamf_DisabledAccount": {
+      "icon": {
+        "color": "#909090",
+        "name": "circle-user",
+        "type": "font-awesome"
+      }
+    },
+    "jamf_SSOIntegration": {
+      "icon": {
+        "color": "#FFFFFF",
+        "name": "address-card",
+        "type": "font-awesome"
+      }
+    }
+  }
+}
