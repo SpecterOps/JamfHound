@@ -1,7 +1,7 @@
 # JamfHound
 
 ## About
-JamfHound is a python3 project designed to collect and identify attack paths in Jamf Pro tenants based on existing object permissions. When run the scripts create JSON object files that can be imported into BloodHound instances to populate custom nodes such as JAMF Pro accounts or computers and display edges between those nodes to reveal different methods of control or code execution available. JamfHound can perform collections against both cloud-hosted and on-site JAMF Pro instances using known credentials. Users are recommended to provision auditor accounts to perform collections which is a pre-defined role that will have the necessary permissions to read all resources to be collected.
+JamfHound is a Python 3 project designed to collect and identify attack paths in Jamf Pro tenants based on existing object permissions. When run the scripts create JSON object files that can be imported into BloodHound instances to populate custom nodes such as JAMF Pro accounts or computers and display edges between those nodes to reveal different methods of control or code execution available. JamfHound can perform collections against both cloud-hosted and on-site JAMF Pro instances using known credentials. Users are recommended to provision auditor accounts to perform collections which is a pre-defined role that will have the necessary permissions to read all resources to be collected.
 
 Example Graph Collection
 ![images/Graph.png](images/Graph.png)
@@ -14,11 +14,11 @@ JamfHound has been updated to omit "objectID" node properties which is now a [pr
 
 To visualize and use the JSON files created from JamfHound collections, users will need a BloodHound instance available. Setup and use of BloodHound has been documented [here.](https://bloodhound.specterops.io/get-started/introduction) Access to a local administrator account within BloodHound will be needed to create custom icons and upload new data. BloodHound will need to be updated to support OpenGraph custom objects.
 ### Dependencies
-* Python3 - version 3.12 or newer
+* Python 3 - version 3.12 or newer
 * Requests python module
   
 ### Installation
-**Note:** We recommend a Python3 virtual environment to ease the installation of dependencies and maintaining changes. 
+**Note:** We recommend a Python 3 virtual environment to ease the installation of dependencies and maintaining changes. 
 1. Install the venv module using pip: `python3 -m pip install venv`
 2. Create a new virtual environment: `python3 -m venv /path/to/new/virtual/environment`
 3. Source the activation script: `source /path/to/new/virtual/environment/bin/activate`
