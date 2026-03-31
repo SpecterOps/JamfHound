@@ -1,8 +1,10 @@
 from lib.models import Edge
+from urllib.parse import urlparse
+from lib.presentation import log_error, log_info
 
 #Module to contain edge calculations
     #Generic function to call new edge computes as they are added
-def compute_edges(PreProcessor, jservice):
+def compute_edges(PreProcessor, jservice, okta=False):
         contains_Tenant_Edges(PreProcessor)
         adminTo_Tenant_Edge(PreProcessor)
         adminTo_Site_Edge(PreProcessor)
@@ -12,11 +14,16 @@ def compute_edges(PreProcessor, jservice):
         memberOf_Edges(PreProcessor)
         computerExtension_Edges(PreProcessor, jservice)
         createApiIntegrations_Edges(PreProcessor)
-#        updateApiIntegrations_Edges(PreProcessor)
         matchingEmails_Edge(PreProcessor)
         computerUser_Edge(PreProcessor)
         matchingUserNames_Edge(PreProcessor)
         recurringScripts_Edge(PreProcessor, jservice)
+        create_sso_login_edges(PreProcessor)
+        create_update_sso_edges(PreProcessor)
+
+        #Add hybrid edges if Okta has been specified
+        if okta:
+            oktaDevice_Edge(PreProcessor)
 
     #Compute AdminTo Edges for Tenant by checking enabled accounts with Full Access and Administrator
 def adminTo_Tenant_Edge(self):
@@ -29,6 +36,15 @@ def adminTo_Tenant_Edge(self):
                 adminEdge = self.check_traversable(adminEdge, y)
                 self.admins.append(y)
                 self.edges.append(adminEdge)
+#            # Adding processing for SSO provider nodes, allow authenticating as any user from the IDP if the SSO mapped properties can be matched to a Jamf account
+#            if y.kind == "jamf_SSOIntegration" and y.properties.get("ssoEnabled"):
+#                adminEdge = Edge("AdminTo")
+#                adminEdge.start["value"] = y.id 
+#                adminEdge.end["value"] = self.tenantID
+#                adminEdge.properties["description"] = "The source has full administrative control over the target and all resources controlled by the target."
+#                adminEdge = self.check_traversable(adminEdge, y)
+#                self.admins.append(y)
+#                self.edges.append(adminEdge)
     
     #Compute AdminTo Edges for Sites by checking enabled accounts with Site Access and Administrator    
 def adminTo_Site_Edge(self):
@@ -225,7 +241,7 @@ def policy_execution_Primitives(self, object_node):
           #if "Update Packages" in object_node.properties["privilegesJSSObjects"]: #TODO: Check if this is all that is needed to run malicious packages with policies
           #     execution_methods.append("Package Creation - The source possesses the privilege 'Update Packages' to update existing PKG files to be run by policies.")
      else:
-          print("ERROR: During Policy Execution Processing an unsupported policy edge node type was provided.") #TODO: Official error handling needed
+          log_error("During Policy Execution Processing an unsupported policy edge node type was provided.")
      return execution_methods
 
     # Compute MemberOf Edge
@@ -262,7 +278,6 @@ def computerExtension_Edges(self, jservice):
                         try:
                           response = jservice.getComputerExtensionAttributes()
                           if len(response.get("computer_extension_attributes")) > 0: # Check if at least one computer extension attribute exists
-                               print(x.properties.get("name"))
                                for z in self.computers:
                                  computerExtensionEdge = Edge("UpdateComputerExtensions")
                                  computerExtensionEdge.start["value"] = x.id
@@ -271,7 +286,7 @@ def computerExtension_Edges(self, jservice):
                                  computerExtensionEdge = self.check_traversable(computerExtensionEdge, x)
                                  self.edges.append(computerExtensionEdge)
                         except Exception as e:
-                             print(str(e))  
+                             log_error(str(e))  
             if self.is_Jamf_API_Client(x):
                 if "Create Computer Extension Attributes" in x.properties.get("privileges"):
                     for l in self.computers:
@@ -293,7 +308,7 @@ def computerExtension_Edges(self, jservice):
                               computerExtensionEdge = self.check_traversable(computerExtensionEdge, x)
                               self.edges.append(computerExtensionEdge)
                     except Exception as e:
-                            print(str(e))
+                            log_error(str(e))
 
 
     # Global only, not site restricted
@@ -383,7 +398,7 @@ def createCombination_Edges(self, x):
             self.edges.append(newEdge) # Append our new edge
 
     else: #How Did We Get Here?
-        print("Unsupported Node Type Identified .. skipping") #TODO: Error Logging
+        log_error("Unsupported Node Type Identified .. skipping")
 
 # Creating our second complex edges, used for privilege escalation
 def updateCombination_Edges(self, x):
@@ -584,7 +599,7 @@ def recurringScripts_Edge(self, jservice):
                               computers = [] #Target Nodes
                               if full_policy.get("policy").get("scope").get("all_computers") == True:
                                    if len(policy_exclusions.get("computers")) < 0:
-                                      print(policy_id, " has no Computers Specified in List.")
+                                      log_info(policy_id, " has no Computers Specified in List.")
                                       if len(policy_exclusions.get("computer_groups")) < 0: 
                                            if len(policy_exclusions.get("users")) < 0:
                                                 if len(policy_exclusions.get("user_groups")) < 0:
@@ -639,5 +654,89 @@ def recurringScripts_Edge(self, jservice):
                                                   scriptsEdge.properties["traversable"] = True
                                                   scriptsEdge.properties["policies"] = policies 
                                                   self.edges.append(scriptsEdge)     
-                                         
-              
+
+# If SSO has been enabled creates an edge between SSOIntegration Node and groups and accounts                                      
+def create_sso_login_edges(self):
+    if self.sso:
+        for m in self.accounts:
+            ssoEdge = Edge("SSO_Login")
+            ssoEdge.start["value"] = self.sso.id
+            ssoEdge.end["value"] = m.id
+            ssoEdge.properties["description"] = "SSO Sources can map attributes to authenticate and inherit the privileges of the target."
+            ssoEdge.properties["traversable"] = True
+            self.edges.append(ssoEdge)
+        if self.sso.properties.get("groupAttributeName") != "" or self.sso.properties.get("groupRdnKey") != "":
+            for n in self.groups:
+                ssoEdge = Edge("SSO_Login")
+                ssoEdge.start["value"] = self.sso.id
+                ssoEdge.end["value"] = n.id
+                ssoEdge.properties["description"] = "SSO Sources can map attributes to authenticate and inherit the privileges of the target."
+                ssoEdge.properties["traversable"] = True
+                self.edges.append(ssoEdge) 
+
+# Create Update_SSO Edge if an API client, account, or group possesses the permission and are not a default admin
+def create_update_sso_edges(self):
+    # Create a local list of source nodes
+    source_nodes = []
+
+    # Iterate through nodes
+    for x in self.nodes:
+        # Check privileges of accounts and groups
+        if self.is_Jamf_Account_Or_Group(x):
+            if x not in self.admins:
+                # Check if node has JAMF Server Settings property first since site accounts will not
+                if x.properties.get("privilegesJSSSettings") and "Update SSO Settings" in x.properties.get("privilegesJSSSettings"):
+                    source_nodes.append(x)
+
+        # Check privileges of API clients
+        if self.is_Jamf_API_Client(x):
+            if "Update SSO Settings" in x.properties.get("privileges"):
+                source_nodes.append(x)
+            
+    # Two states, SSO is enabled and integration node will exist, or it will not and edges must point to accounts and groups
+    if self.sso:
+        for source in source_nodes:
+            ssoEdge = Edge("Update_SSO_Settings")
+            ssoEdge.start["value"] = source.id
+            ssoEdge.end["value"] = self.sso.id
+            ssoEdge.properties["description"] = "The source can update SSO settings in the JAMF Pro tenant to include adding new IDP authentication as accounts or groups."
+            ssoEdge.properties["traversable"] = True
+            self.edges.append(ssoEdge)
+    # Map sources to every group and account
+    else:
+        combined_list = self.accounts + self.groups
+        for source in source_nodes:
+            for dest in combined_list:
+                ssoEdge = Edge("Update_SSO_Settings")
+                ssoEdge.start["value"] = source.id
+                ssoEdge.end["value"] = dest.id
+                ssoEdge.properties["description"] = "The source can update SSO settings in the JAMF Pro tenant to include adding new IDP authentication as accounts or groups."
+                ssoEdge.properties["traversable"] = True
+                self.edges.append(ssoEdge)
+
+# Adds same device edges to Okta registered devices matching by UDID
+# Okta object id : 8D146E54-XXX-XXX-XXX-XXXXXXX@XXX.okta.com
+def oktaDevice_Edge(self):
+    if self.sso:
+        if self.sso.properties.get("SAML_SETTING-idpUrl") and len(self.sso.properties.get("SAML_SETTING-idpUrl")) > 1:
+            url = self.sso.properties.get("SAML_SETTING-idpUrl")
+            parsed = urlparse(url)
+            domain = parsed.netloc
+        else:
+            domain = ""
+            log_info("? - Okta specified, but no idpUrl configured in Jamf Pro tenant SSO.- ?")
+            domain = input("Please enter the okta domain to match on for OktaHound nodes (i.e. mydomain.okta.com) > ")
+            if len(domain) < 5:
+                log_error("Okta domain not specified and could not be automatically enumerated, skipping Okta node integration.")
+                return
+        for x in self.computers:
+            oktaDeviceEdge = Edge("Okta_Same_Device")
+            oktaDeviceEdge.start["value"] = x.id
+            oktaDeviceEdge.start["kind"] = x.kind
+            oktaDeviceEdge.end["value"] = f"{x.properties.get("udid")}@{domain}"
+            oktaDeviceEdge.end["kind"] = "Okta_Device"
+            oktaDeviceEdge.properties["description"] = "The Jamf Pro registered computer UDID matches the registered device UDID value in Okta"
+            oktaDeviceEdge.properties["traversable"] = True
+            self.edges.append(oktaDeviceEdge)
+    else:
+        log_info("SSO not configured/set to false in the tenant, skipping OktaDevice Edges")

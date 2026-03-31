@@ -134,7 +134,22 @@ class JAMFService(Common):
             url=f"/JSSResource/scripts/id/{identifier}"
         )
         return response
-    
+
+    # TODO: separate into controller
+        
+    def getSSO(self) -> Any:
+        response = self.retrieve(
+#            url=f"/api/v2/sso"
+            url=f"/api/v3/sso"
+        )
+        return response
+        
+#    def getSSO(self, identifier: str) -> Any:
+#        response = self.retrieve(
+#            url=f"/JSSResource/scripts/id/{identifier}"
+#        )
+#        return response    
+
     #TODO: separate into controller
     def getComputerExtensionAttributes(self) -> Any:
         response = self.retrieve(

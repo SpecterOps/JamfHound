@@ -1,6 +1,8 @@
 import json
 import os
+from urllib.parse import urlparse
 from lib.edges import compute_edges
+from lib.presentation import log_error, log_info
 from lib.models import (
     Node, 
     Edge
@@ -32,8 +34,9 @@ def checkAzureUsers(azureJSON, jamfJSON="JAMFcollection.json"):
 
 # Primary class for preparing data for ingest
 class Preprocessor():
-    def __init__(self, jtenant):
+    def __init__(self, args):
         self.admins = []
+        self.args = args
         self.computers = []
         self.computerusers = []
         self.accounts = []
@@ -42,9 +45,10 @@ class Preprocessor():
         self.scripts = []
         self.policies = {}
         self.groups = []
-        self.tenant = jtenant
+        self.tenant = args.baseUrl
         self.tenantID = ""
         self.rolesData = ""
+        self.sso = None
         self.edges = []
         self.nodes = []
         self.graph = {}
@@ -56,9 +60,10 @@ class Preprocessor():
   },     
   "metadata": {
     "ingest_version": "v1",
+    "source_kind": "jamf",
     "collector": {
-      "name": "Custom Collector",
-      "version": "beta",
+      "name": "JamfHound",
+      "version": "v1.1.1",
       "properties": {   
         "collection_methods": [
           "Custom Method"
@@ -103,7 +108,6 @@ class Preprocessor():
         else:
             tenant.properties["type"] = "cloud-hosted"
         tenant.id = str(tenant.properties.get("name"))
-        tenant.properties["objectid"] = tenant.properties.get("name")
         tenant.properties["displayname"] = tenant.properties.get("name")
         self.tenantID = tenant.id
         self.nodes.append(tenant)    
@@ -115,7 +119,6 @@ class Preprocessor():
                 z.kind = "jamf_" + z.kind
             if z.id != self.tenantID and write_only == False:
                 z.id = f"{self.tenantID}-{z.id}" # Prepend tenant ID to make child nodes unique
-                z.properties["objectid"] = z.id # Make sure objectid matches so ingest can complete
             new_node = {
             "id": z.id,
             "kinds": [z.kind],
@@ -137,11 +140,10 @@ class Preprocessor():
             self.graph["graph"]["edges"].append(new_edge)
 
     # Write Out JSON
-    def write_out_collection(self, jservice, outfile="JAMFcollection.json", write_only = False):
+    def write_out_collection(self, jservice, outfile="JAMFcollection.json", write_only = False, okta = False):
         self.convert_nodes(write_only)
-        #self.compute_edges()
         if jservice is not None: # Our use case for edge processing, otherwise just node processing
-            compute_edges(self, jservice)
+            compute_edges(self, jservice, okta)
         self.convert_edges(write_only)
         with open (outfile, "w") as f:
             json.dump(self.graph, f, indent=2)
@@ -154,6 +156,7 @@ class Preprocessor():
         self.process_computer_nodes("computers.json")
         self.process_site_nodes("sites.json")
         self.process_api_client_nodes("apiclients.json", "apiroles.json")
+        self.process_sso_node("sso.json")
         try:
             self.policies = (self.file_JSON_load("policies.json")).get("data")
         except:
@@ -168,7 +171,7 @@ class Preprocessor():
         try:
             accts_data = self.file_JSON_load(accounts_file)
         except Exception as e:
-            print(f"Failed to process accounts: {e}")
+            log_error(f"Failed to process accounts: {e}")
             return
         #Stub for accessing individual account data properties
         for x in accts_data["data"]:
@@ -176,9 +179,9 @@ class Preprocessor():
             newaccount.id = f"A{x["Properties"]["id"]}"
             newaccount.properties["displayname"] = x["Properties"]["full_name"]
             newaccount.properties["privilegeSet"] = x["Properties"]["privilege_set"]
-            newaccount.properties["objectid"] = newaccount.id
             newaccount.properties["name"] = x["Properties"]["name"]
             newaccount.properties["email"] = x["Properties"]["email"]
+            newaccount.properties["domainName"] = self.tenantID
             try:
                 newaccount.properties["siteID"] = x["Properties"]["site"]["id"]
             except:
@@ -193,7 +196,7 @@ class Preprocessor():
                 #ACCOUNT GROUPS ARE UNRELIABLE, ONLY RETURNS MOST RECENT GROUP ACCOUNT WAS ASSIGNED TO
                 newaccount.properties["privilegesJSSObjects"] = "Group Assigned"
                 newaccount.properties["privilegesJSSActions"] = "Group Assigned"
-                newaccount.properties["privilegesJSSOSettings"] = "Group Assigned"
+                newaccount.properties["privilegesJSSSettings"] = "Group Assigned"
             else:
                 try:
                     newaccount.properties["privilegesJSSObjects"] = x["Properties"]["privileges"]["jss_objects"]
@@ -219,7 +222,7 @@ class Preprocessor():
             accts_data = self.file_JSON_load(accounts_file)
             self.rolesData = self.file_JSON_load(roles_file)
         except Exception as e:
-            print(f"Failed to process API Clients and Roles: {e}")
+            log_error(f"Failed to process API Clients and Roles: {e}")
             return
         for v in accts_data["results"]:
             newclient = Node("ApiClient")
@@ -239,6 +242,66 @@ class Preprocessor():
                 newclient.kind = "DisabledApiClient"
             self.apiclients.append(newclient)
             self.nodes.append(newclient)
+
+    #Add SSO Client Node
+    def process_sso_node(self, accounts_file):
+        try:
+            sso_data = self.file_JSON_load(accounts_file)
+        except Exception as e:
+            # Don't want this printed every time because SSO isn't enabled
+            if self.args.okta:
+                log_error(f"Failed to process SSO data: {e}")
+            return
+        if sso_data["ssoEnabled"]:
+            newclient = Node("SSOIntegration")
+            #Format the idp URL to be used as unique ID - potential node collision if same IDP is used with two Jamf instances
+#            if "SAML" in str(sso_data.get("configurationType")):
+#                if str(sso_data["samlSettings"]["idpUrl"]).startswith("http"): # Removed s://
+#                    idpUVal = str(sso_data["samlSettings"]["idpUrl"])[8:]
+#                     parsed = urlparse(str(sso_data["samlSettings"]["idpUrl"]))
+#                     idpUVal = parsed.netloc
+#                elif str(sso_data["samlSettings"]["idpUrl"]).startswith("http://"):
+#                    idpUVal = str(sso_data["samlSettings"]["idpUrl"])[7:]
+#                else:
+#                    idpUVal = str(sso_data["samlSettings"]["idpUrl"])
+#                # Modified to use parsing to shorten object id just IDP net location
+#                newclient.id = str(idpUVal)
+#            else:
+#                newclient.id = f"OIDC-SSO" # TODO: Refine this
+                # The domain is not going to be known until edge processing, placeholder for now
+            newclient.id = "SSO"
+            newclient.properties = sso_data
+            newclient.properties["siteID"] = "-1"
+            newclient.properties["Tier"] = 0 # Tier 0, if you can manage SSO node object, you can auth. as any principal and/or groups that exist
+            newclient.properties["name"] = f"SSO_{sso_data.get("configurationType")}"
+            newclient.properties["enrollmentSsoConfig"] = str(sso_data.get("enrollmentSsoConfig"))
+
+            if sso_data.get("configurationType") == "SAML":
+                newclient.properties.pop("oidcSettings")
+                # Format SAML Settings 
+                for property in newclient.properties.get("samlSettings"):
+                     newclient.properties[f"SAML_SETTING-{str(property)}"] = newclient.properties.get("samlSettings").get(property)
+                newclient.properties.pop("samlSettings")
+            elif sso_data.get("configurationType") == "OIDC":
+                newclient.properties.pop("samlSettings")
+                # Format OIDC Settings
+                for property in newclient.properties.get("oidcSettings"):
+                     newclient.properties[f"OIDC_SETTING-{str(property)}"] = newclient.properties.get("oidcSettings").get(property)
+                newclient.properties.pop("oidcSettings")
+            else: # Might have both
+                for property in newclient.properties.get("samlSettings"):
+                     newclient.properties[f"SAML_SETTING-{str(property)}"] = newclient.properties.get("samlSettings").get(property)
+                for property in newclient.properties.get("oidcSettings"):
+                     newclient.properties[f"OIDC_SETTING-{str(property)}"] = newclient.properties.get("oidcSettings").get(property)                
+                newclient.properties.pop("oidcSettings")
+                newclient.properties.pop("samlSettings")
+
+            # Replace all None values with strings
+            for v in newclient.properties:
+                if newclient.properties[v] == None:
+                    newclient.properties[v] = "Null"
+            self.sso = newclient
+            self.nodes.append(newclient)
            
 
     #Add Group Nodes TODO: WILL NEED TO EVENTUALLY ACCOUNT FOR GROUPS ASSIGNED TO MULTIPLE SITES
@@ -246,7 +309,8 @@ class Preprocessor():
         try:
             accts_data = self.file_JSON_load(accounts_file)
         except Exception as e:
-            print(f"Failed to process groups: {e}")
+            #log_error(f"Failed to process groups: {e}")
+            log_error(f"Failed to process groups: {e}")
             return
         #Stub for accessing individual account data properties
         for x in accts_data["Groups"]:
@@ -254,7 +318,6 @@ class Preprocessor():
             newaccount.id = f"G{x["group"]["id"]}"
             newaccount.properties["displayname"] = x["group"]["name"]
             newaccount.properties["privilegeSet"] = x["group"]["privilege_set"]
-            newaccount.properties["objectid"] = newaccount.id
             newaccount.properties["name"] = x["group"]["name"]
             try:
                 newaccount.properties["siteID"] = x["group"]["site"]["id"]
@@ -298,7 +361,6 @@ class Preprocessor():
                 newuser.properties["displayname"] = computer_node.properties.get("username")
                 newuser.properties["name"] = computer_node.properties.get("username")
                 newuser.properties["email"] = ""
-            newuser.properties["objectid"] = newuser.id
             newuser.properties["computer"] = computer_node.id
             self.nodes.append(newuser)
             self.computerusers.append(newuser)
@@ -308,14 +370,14 @@ class Preprocessor():
         try:
             cmpts_data = self.file_JSON_load(computers_file)
         except Exception as e:
-            print(f"Failed to process computers: {e}")
+            log_error(f"Failed to process computers: {e}")
             return
         for c in cmpts_data["data"]:
             newcomputer = Node("Computer")
-            newcomputer.id = f"C{c["Properties"]["id"]}"
+#            newcomputer.id = f"C{c["Properties"]["id"]}"
+            newcomputer.id = str(c["Properties"]["udid"])
             newcomputer.properties["displayname"] = c["Properties"]["name"]
             newcomputer.properties["name"] = c["Properties"]["name"]
-            newcomputer.properties["objectid"] = newcomputer.id
             #Replace sub dictionaries
             newcomputer.properties["managed"] = c["Properties"]["remote_management"]["managed"]
             newcomputer.properties["make"] = c["Properties"]["make"]
@@ -383,13 +445,12 @@ class Preprocessor():
         try:
             sites_data = self.file_JSON_load(sites_file)
         except Exception as e:
-            print(f"Failed to process sites: {e}")
+            log_error(f"Failed to process sites: {e}")
             return
         for s in sites_data["sites"]:
             newsite = Node("Site")
             newsite.id = f"S{s['id']}"
             newsite.properties["name"] = s['name']
-            newsite.properties["objectid"] = newsite.id
             newsite.properties["displayname"] = newsite.properties.get("name")
             newsite.properties["siteID"] = s['id']
             self.sites.append(newsite)

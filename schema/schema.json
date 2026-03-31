@@ -2,7 +2,7 @@
   "schema": {
     "name": "JamfHound",
     "display_name": "JAMF (JamfHound)",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "namespace": "jamf"
   },
   "node_kinds": [
@@ -231,7 +231,7 @@
     {
       "name": "jamf_Update_SSO_Settings",
       "description": "Represents the ability to update or enable SSO settings in the tenant to change authentication to inherit the privileges of JAMF accounts and groups.",
-      "is_traversable": true 
+      "is_traversable": true
     },
     {
       "name": "jamf_Okta_Same_Device",
@@ -247,7 +247,7 @@
   "environments": [
     {
       "environment_kind": "jamf_Tenant",
-      "source_kind": "jamf_Base",
+      "source_kind": "jamf",
       "principal_kinds": [
         "jamf_Account",
         "jamf_Group",
