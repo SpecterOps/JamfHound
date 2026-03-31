@@ -7,9 +7,9 @@ headers = {
     "Content-Type": "application/json"
 }
 
-node_types = ["jamf_Account", "jamf_Computer", "jamf_Site", "jamf_Group", "jamf_ApiClient", "jamf_DisabledApiClient", "jamf_ComputerUser", "jamf_Tenant", "jamf_DisabledAccount"]
-icon_names = ["circle-user", "display", "circle-nodes", "people-group", "user-gear", "user-gear", "circle-user", "cloud", "circle-user"]
-colors = ["#0098BB", "#D6001C", "#D67500", "#F0FC03", "#8803FC", "#909090", "#FC03A5", "#00C08D", "#909090"]
+node_types = ["jamf_Account", "jamf_Computer", "jamf_Site", "jamf_Group", "jamf_ApiClient", "jamf_DisabledApiClient", "jamf_ComputerUser", "jamf_Tenant", "jamf_DisabledAccount", "jamf_SSOIntegration"]
+icon_names = ["circle-user", "display", "circle-nodes", "people-group", "user-gear", "user-gear", "circle-user", "cloud", "circle-user", "address-card"]
+colors = ["#0098BB", "#D6001C", "#D67500", "#F0FC03", "#8803FC", "#909090", "#FC03A5", "#00C08D", "#909090", "#FFFFFF"]
 
 for x in range(len(node_types)):
 #   print(f"{x}: {node_types[x]}, {icon_names[x]}, {colors[x]}")

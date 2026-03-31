@@ -30,6 +30,9 @@ from lib.models import (
     Data
 )
 
+import logging
+import sys
+
 _T = TypeVar("_T")
 _S = TypeVar("_S", bound=Union[str, bytes, Exception, None])
 
@@ -255,3 +258,34 @@ class PolicyView(ModelView[Policy]):
             for (key, value) in self.primitives(policy).items()
         ]
         return self
+
+# Generic red formatting for logging class handler
+class RedErrorFormatter(logging.Formatter):
+    #RED = "\033[31m"
+    RED = '\033[1;91m'
+    RESET = "\033[0m"
+
+    def format(self, record):
+        message = super().format(record)
+        if record.levelno >= logging.ERROR:
+            return f"{self.RED}{message}{self.RESET}"
+        return message
+
+# Write out and format errors red 
+def log_error(error_string):
+    # Default error output formatting
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setLevel(logging.ERROR)
+    handler.setFormatter( RedErrorFormatter('%(levelname)s - %(message)s') )
+
+    logging.basicConfig(
+        level=logging.ERROR,
+        handlers=[handler]
+    )
+    # Write the ouptut
+    logging.error(error_string)
+
+# Simple info logger, not much formatting required    
+def log_info(info_string):
+    # TODO: Replace with logging if feasible
+    print(f"INFO - {info_string}")

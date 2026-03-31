@@ -1,20 +1,24 @@
 # JamfHound
 
 ## About
-JamfHound is a python3 project designed to collect and identify attack paths in Jamf Pro tenants based on existing object permissions. When run the scripts create JSON object files that can be imported into BloodHound instances to populate custom nodes such as Jamf accounts or computers and display edges between those nodes to reveal different methods of control or code execution available. JamfHound can perform collections against both cloud-hosted and on-site Jamf Pro instances using known credentials. Users are recommended to provision auditor accounts to perform collections which is a pre-defined role that will have the necessary permissions to read all resources to be collected.
+JamfHound is a Python 3 project designed to collect and identify attack paths in Jamf Pro tenants based on existing object permissions. When run the scripts create JSON object files that can be imported into BloodHound instances to populate custom nodes such as JAMF Pro accounts or computers and display edges between those nodes to reveal different methods of control or code execution available. JamfHound can perform collections against both cloud-hosted and on-site JAMF Pro instances using known credentials. Users are recommended to provision auditor accounts to perform collections which is a pre-defined role that will have the necessary permissions to read all resources to be collected.
 
 Example Graph Collection
 ![images/Graph.png](images/Graph.png)
+
+> [!WARNING]
+**v1.1.1 Breaking Change Update**<br>
+JamfHound has been updated to omit "objectID" node properties which is now a [protected attribute](https://bloodhound.specterops.io/opengraph/developer/schema#reserved-property-objectid) in BloodHound. Previous versions of BloodHound Community Edition must be updated to the latest version otherwise schema validation may fail when importing collections.
 
 ## Getting Started
 
 To visualize and use the JSON files created from JamfHound collections, users will need a BloodHound instance available. Setup and use of BloodHound has been documented [here.](https://bloodhound.specterops.io/get-started/introduction) Access to a local administrator account within BloodHound will be needed to create custom icons and upload new data. BloodHound will need to be updated to support OpenGraph custom objects.
 ### Dependencies
-* Python3 - version 3.12 or newer
-* Requests Module
+* Python 3 - version 3.12 or newer
+* Requests python module
   
 ### Installation
-**Note:** JamfHound is recommended to be used with a Python3 virtual environment to ease the installation of dependencies and maintaining changes. 
+**Note:** We recommend a Python 3 virtual environment to ease the installation of dependencies and maintaining changes. 
 1. Install the venv module using pip: `python3 -m pip install venv`
 2. Create a new virtual environment: `python3 -m venv /path/to/new/virtual/environment`
 3. Source the activation script: `source /path/to/new/virtual/environment/bin/activate`
@@ -35,7 +39,7 @@ Run JamfHound/lib/create_jamf_icons.py to insert the custom icons and colors for
 * `python3 JamfHound/lib/create_jamf_icons.py`
 
 ## Usage
-JamfHound currently collects a variety of information from Jamf including computer details, account information, api clients, sites, and groups. In its current state collections must be run with an account capable of collecting these objects which typically are auditors and administrator accounts.
+JamfHound collects a variety of information from JAMF Pro including computer details, account information, api clients, sites, and groups. While use of an auditor account will give the best collection results, if an account does not possess all of the permissions required errors will be reported to the console for which resources could not be collected, but the JSON output will still be created with information that is available.
 
 Perform a collection of a cloud hosted tenant:
 * `python3 main.py --username auditor --password "auditorPASS" --target https://mytenant.jamfcloud.com --collect`
@@ -43,19 +47,23 @@ Perform a collection of a cloud hosted tenant:
 Perform a collection of an onsite tenant:
 * `python3 main.py --username auditor --password "auditorPASS" --target https://mytenant.local:8443 --collect`
 
+Perform a collection of a cloud tenant and generate Okta hybrid device edges for use with [OktaHound](https://bloodhound.specterops.io/opengraph/extensions/oktahound/overview):
+* `python3 main.py --username auditor --password "auditorPASS" --target https://mytenant.jamfcloud.com --collect --okta`
+
 Upload the Jamfcollection.json file to BloodHound using the file ingestion interface:
 ![images/Ingest.png](images/Ingest.png)
 
 Use the custom cypher queries contained in the JamfHound repository to view and parse data using the Cypher tab of the BloodHound interface. (OpenGraph currently only supports Cypher queries, but in the future path finding and additional searches are likely to be supported.)
 
-Note: Uploads of multiple Jamf tenants that use the same domain name may result in unexpected node collisions. While this is extremely rare, if you have multiple tenants you wish to collect that use the same URL/domain name for access, use either multiple BH instances or delete data between collections. 
+> [!NOTE]
+Uploads of multiple JAMF Pro tenants that use the same domain name may result in unexpected node collisions. While this is extremely rare, if you have multiple tenants you wish to collect that use the same URL/domain name for access, use either multiple BH instances or delete data between collections. 
 
 ## Pending Work
-1. Error Logging, currently a lot of printing to the console
-2. Parallelization with Multi-Threading to Speed Up Collection
-3. Parallelization for Preprocessing if possible
-4. Improved Error Handling and Exception Case Handling
-5. Addition of more code execution edges that have been discovered
+1. Parallelization with multi-threading to speed Up collection
+2. Improved error handling and exception case handling
+3. Addition of more code execution edges that have been discovered
+4. Collection of JAMF Account resources
+
 
 ## Contributors
 Credit to the following team members for their significant contributions in designing and developing JamfHound as an initial proof-of-concept.

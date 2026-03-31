@@ -1,3 +1,14 @@
+V1.1.1 - March 31, 2026
+- Schema.json definition added 
+- Omitted objectID node properties to comply with latest OpenGraph schema requirements
+- Cypher queries converted to importable JSON
+- Updated metadata included in collections to comply with schema requirements
+- Added jamf_SSOIntegration node for representing SSO configurations in environments
+- Added privilege zone queries
+- Added logging handler for errors and standard output
+- Added --okta command line parameter for collection
+- Added new edges: jamf_Okta_Same_Device, jamf_SSO_Login, jamf_Update_SSO_Settings
+
 V1.1 - August 29, 2025
 - jamf prefix changed from "jamf" to "jamf_" to make reading edges and node titles easier
 - Added jamf_UpdateRecurringScripts and jamf_MatchedName edges

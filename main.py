@@ -12,6 +12,7 @@ from lib.services import (
 )
 
 from lib.preprocess import Preprocessor, checkAzureUsers
+from lib.presentation import log_error, log_info
 import json
 import os
 from datetime import datetime
@@ -25,7 +26,6 @@ def main():
         "--username", "--username", "-u",
         dest="username",
         type=str,
-        # default="jd",
         default="",
         action="store",
         help="Username for authentication"
@@ -180,6 +180,13 @@ def main():
     help="Path to the additional JAMFcollection JSON file to use for processing."
     )
 
+    parser.add_argument(
+    "--okta", "-okta",
+    dest="okta",
+    action="store_true",
+    help="Enable Okta hybrid edge creation if OktaHound will be used with JamfHound"
+    )
+
     args = parser.parse_args()
     if not ((args.username and args.password) or args.token or (args.checkAzureUsers and args.JAMFcollection)):
         if args.checkAzureUsers or args.JAMFcollection:
@@ -206,15 +213,13 @@ def main():
         try:
             ctl.getAccounts()
         except Exception as e:
-            ctl.view.error(e)
-            ctl.view.failure(f"Failed to collect accounts: {e}")
+            log_error(f"Failed to collect accounts: {e}")
         # Collect Computers
         try:
             cptrs = ComputerController(**args.__dict__)
             cptrs.getComputers()
         except Exception as e:
-            cptrs.view.error(e)
-            cptrs.view.failure(f"Failed to collect computers: {e}")
+            log_error(f"Failed to collect computers: {e}")
         # Sites
         try:
             jservice = JAMFService(**args.__dict__)
@@ -223,8 +228,7 @@ def main():
             sites = jservice.getSites()
             jservice.writeJsonFile("sites.json", sites)
         except Exception as e:
-            cptrs.view.error(e)
-            cptrs.view.failure(f"Failed to collect sites: {e}")
+            log_error(f"Failed to collect sites: {e}")
         # Collect account groups TODO: Move these actions to controller or services.py internal method calls
         try:
             agroups = jservice.getAccountGroups()
@@ -236,41 +240,43 @@ def main():
             jservice.writeJsonFile("groups.json", group_out)
             cptrs.view.success("Saving groups to groups.json")
         except Exception as e: 
-            cptrs.view.error(e)
-            cptrs.view.failure(f"Failed to collect groups: {e}")
+            log_error(f"Failed to collect groups: {e}")
         #TODO: Collect Policies to determine if any scripts are recurring/can be updated alone
         try:
             pols = PolicyController(**args.__dict__)
             pols.getPolicies()
         except Exception as e:
-            pols.view.error(e)
-            pols.view.failure(f"Failed to collect policies: {e}")
+            log_error(f"Failed to collect policies: {e}")
         # Collect Scripts
         try:
             scripts = jservice.getScripts()
             cptrs.view.success("Saving scripts to scripts.json") #TODO either write a sites controller or stop using controllers and pass directly for processing
             jservice.writeJsonFile("scripts.json", scripts)
         except Exception as e:
-            cptrs.view.error(e)
-            cptrs.view.failure(f"Failed to collect scripts: {e}")   
+            log_error(f"Failed to collect scripts: {e}")
+        # SSO Settings Collection
+        try:
+            sso = jservice.getSSO()
+            cptrs.view.success("Saving SSO settings to sso.json") #TODO either write a sites controller or stop using controllers and pass directly for processing
+            jservice.writeJsonFile("sso.json", sso)
+        except Exception as e:
+            log_info(f"SSO not configured, or endpoint is inaccessible: {e}")
         # Api Clients and Roles Collection
         try:
             apiRoles = jservice.getApiRoles()
             jservice.writeJsonFile("apiroles.json", apiRoles)
         except Exception as e:
-            cptrs.view.error(e)
-            cptrs.view.failure(f"Failed to collect API roles: {e}")
+            log_error(f"Failed to collect API roles: {e}")
         try:
             apiClients = jservice.getApiClients()
             jservice.writeJsonFile("apiclients.json", apiClients)
             cptrs.view.success("Saving api roles and clients to apiroles.json and apiclients.json")
         except Exception as e:
-            cptrs.view.error(e)
-            cptrs.view.failure(f"Failed to collect API clients: {e}")
+            log_error(f"Failed to collect API clients: {e}")
         # Preprocessing to create JSON to import into BloodHound
-        jamfPreprocessor = Preprocessor(args.baseUrl)
+        jamfPreprocessor = Preprocessor(args)
         jamfPreprocessor.process_nodes()
-        cptrs.view.success(jamfPreprocessor.write_out_collection(jservice))
+        cptrs.view.success(jamfPreprocessor.write_out_collection(jservice, okta=args.okta))
         return
 
     if args.checkAzureUsers:
