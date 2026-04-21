@@ -1,7 +1,0 @@
-{
-  "name": "Jamf: Tier One Principals",
-  "description": "Other devices and principals without granted tenant administrator permissions.",
-  "cypher": "MATCH (n)\nWHERE n.Tier = 1\nRETURN n",
-  "enabled": true,
-  "allow_disable": true
-}

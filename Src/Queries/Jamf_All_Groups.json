@@ -1,5 +1,0 @@
-{
-  "name": "Jamf: All Groups",
-  "description": "Get Jamf Groups",
-  "query": "MATCH p=(s:jamf_Group)\nRETURN p"
-}
