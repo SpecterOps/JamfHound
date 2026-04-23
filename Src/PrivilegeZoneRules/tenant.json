@@ -1,7 +1,0 @@
-{
-  "name": "Jamf: Tenant",
-  "description": "Tenant nodes in JAMF Pro.",
-  "cypher": "MATCH (n:jamf_Tenant)\nRETURN n",
-  "enabled": true,
-  "allow_disable": true
-}

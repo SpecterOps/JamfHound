@@ -6,6 +6,10 @@ JamfHound is a Python 3 project designed to collect and identify attack paths in
 Example Graph Collection
 ![images/Graph.png](images/Graph.png)
 
+JamfHound is a community-maintained alternative to the SpecterOps-supported [OpenHound Jamf collector](https://bloodhound.specterops.io/openhound/collectors/jamf/overview).
+
+JamfHound works with the [BloodHound Jamf Extension](https://bloodhound.specterops.io/opengraph/extensions/jamf/overview) and produces OpenGraph JSON output that can be uploaded to BloodHound.
+
 > [!WARNING]
 **v1.1.1 Breaking Change Update**<br>
 JamfHound has been updated to omit "objectID" node properties which is now a [protected attribute](https://bloodhound.specterops.io/opengraph/developer/schema#reserved-property-objectid) in BloodHound. Previous versions of BloodHound Community Edition must be updated to the latest version otherwise schema validation may fail when importing collections.
@@ -47,16 +51,22 @@ Perform a collection of a cloud hosted tenant:
 Perform a collection of an onsite tenant:
 * `python3 main.py --username auditor --password "auditorPASS" --target https://mytenant.local:8443 --collect`
 
-Perform a collection of a cloud tenant and generate Okta hybrid device edges for use with [OktaHound](https://bloodhound.specterops.io/opengraph/extensions/oktahound/overview):
+Perform a collection of a cloud tenant and generate Okta hybrid device edges for use with [OktaHound](https://github.com/SpecterOps/OktaHound):
 * `python3 main.py --username auditor --password "auditorPASS" --target https://mytenant.jamfcloud.com --collect --okta`
 
-Upload the Jamfcollection.json file to BloodHound using the file ingestion interface:
-![images/Ingest.png](images/Ingest.png)
+## Use the Collected Data
 
-Use the custom cypher queries contained in the JamfHound repository to view and parse data using the Cypher tab of the BloodHound interface. (OpenGraph currently only supports Cypher queries, but in the future path finding and additional searches are likely to be supported.)
+To use the collected Jamf data in BloodHound, follow the [Jamf Extension getting started guide](https://bloodhound.specterops.io/opengraph/extensions/jamf/getting-started) to install the extension and import the Jamf Cypher queries and Privilege Zone rules.
+
+After that, upload the Jamfcollection.json file to BloodHound using the file ingestion interface:
+![images/Ingest.png](images/Ingest.png)
 
 > [!NOTE]
 Uploads of multiple JAMF Pro tenants that use the same domain name may result in unexpected node collisions. While this is extremely rare, if you have multiple tenants you wish to collect that use the same URL/domain name for access, use either multiple BH instances or delete data between collections. 
+
+## Nodes and Edges
+
+For detailed documentation, see [BloodHound Docs - Jamf Schema](https://bloodhound.specterops.io/opengraph/extensions/jamf/schema).
 
 ## Pending Work
 1. Parallelization with multi-threading to speed Up collection
