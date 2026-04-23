@@ -2,7 +2,7 @@
   "schema": {
     "name": "JamfHound",
     "display_name": "JAMF (JamfHound)",
-    "version": "1.1.1",
+    "version": "v1.1.1",
     "namespace": "jamf"
   },
   "node_kinds": [
